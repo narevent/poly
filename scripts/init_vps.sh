@@ -171,11 +171,19 @@ as_user "$VENV/bin/pip install --upgrade pip wheel"
 as_user "$VENV/bin/pip install -r $REQUIREMENTS gunicorn"
 
 # --- 6. Secret key + env file ----------------------------------------------
-# Keys are read by scribe/settings.py, which looks for SCRIBE_* regardless of
-# the project name — see ENV_PREFIX in config.sh.
+# Keys are read by metronome/settings.py, which looks for METRONOME_* (or
+# whatever ENV_PREFIX is) regardless of the project name — see config.sh.
 ENV_FILE="$APP_ROOT/.env"
-if [[ ! -f "$ENV_FILE" ]]; then
-  log "Generating $ENV_FILE ..."
+# Regenerate when missing OR when it predates a prefix change (e.g. an old
+# SCRIBE_* file left over from a renamed project). Never clobber a file that
+# already has the current prefix's SECRET_KEY.
+if [[ ! -f "$ENV_FILE" ]] || ! grep -q "^${ENV_PREFIX}_SECRET_KEY=" "$ENV_FILE"; then
+  if [[ -f "$ENV_FILE" ]]; then
+    log "$ENV_FILE predates current prefix; backing up and regenerating."
+    mv "$ENV_FILE" "$ENV_FILE.bak.$(date +%s)"
+  else
+    log "Generating $ENV_FILE ..."
+  fi
   if [[ -x "$VENV/bin/python" ]]; then
     SECRET="$("$VENV/bin/python" -c 'import secrets;print(secrets.token_urlsafe(60))')"
   else
@@ -191,7 +199,7 @@ EOF
   chown "$ACCT" "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 else
-  log "$ENV_FILE already exists; leaving it alone."
+  log "$ENV_FILE already exists with current prefix; leaving it alone."
 fi
 
 # --- 7. Symlink persistent data into the checkout --------------------------
