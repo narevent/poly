@@ -1,0 +1,53 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0d0f14" />
+  <title>Poly — Metronome</title>
+  <link rel="stylesheet" href="{% static 'metronome/styles.css' %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">●</span>
+        <span class="brand-name">Poly</span>
+        <span class="brand-sub">metronome</span>
+      </div>
+      <div class="transport">
+        <button id="playBtn" class="play-btn" title="Play / Stop (Space)">
+          <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+        </button>
+        <div class="tempo-readout">
+          <span id="bpmReadout">120</span><span class="unit">bpm</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="viewnav" id="viewnav" role="tablist" aria-label="Views">
+      <button type="button" role="tab" data-view="main" class="active" aria-selected="true">Main</button>
+      <button type="button" role="tab" data-view="presets" aria-selected="false">Presets</button>
+      <button type="button" role="tab" data-view="song" aria-selected="false">Song</button>
+    </nav>
+
+    <main id="main">
+      <!-- views injected here by app.js -->
+    </main>
+
+    <footer class="statusbar" id="statusBar">
+      <span id="statusPos">stopped</span>
+      <span class="status-right">
+        <span id="statusLayers">1 layer</span>
+        <span id="statusBpm">120 BPM</span>
+      </span>
+    </footer>
+  </div>
+
+  <script type="module" src="{% static 'metronome/js/app.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Python / Django
+__pycache__/
+*.py[cod]
+db.sqlite3
+staticfiles/
+
+# Claude Code
+.claude/
+
+# Deployment identity, written by scripts/config.sh on first run. Machine-local:
+# it names the VPS paths/service/user for THIS deployment.
+scripts/project.conf

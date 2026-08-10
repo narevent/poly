@@ -1,0 +1,947 @@
+/* ============================================================
+   Poly Metronome — styles
+   Mobile first; a spacing scale keeps every gap on the same grid.
+   ============================================================ */
+
+:root {
+  --bg: #0d0f14;
+  --bg-soft: #13161d;
+  --card: #171a23;
+  --card-2: #1c2029;
+  --line: #2b3140;
+  --line-soft: #222732;
+  --text: #e7ecf3;
+  --muted: #9aa3b7;
+  --muted-2: #6b7385;
+  --accent: #6ea8ff;
+  --accent-2: #4f8cff;
+  --accent-ink: #06121f;
+  --accent-soft: rgba(110, 168, 255, .16);
+  --ghost: #7c84ff;
+  /* "lit" variants — the colour a slice takes while it is sounding. Declared
+     as real colours rather than produced with filter: brightness(), because
+     WebKit applies CSS filters to SVG child elements unreliably: on iOS the
+     highlight simply did not appear, while it worked on desktop. */
+  --accent-lit: #cfe4ff;
+  --ghost-lit: #cdd0ff;
+  --warn: #ffb86b;
+  --danger: #ff6b81;
+  --danger-soft: rgba(255, 107, 129, .14);
+  --good: #5fe3a1;
+
+  /* spacing scale */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 22px;
+  --s6: 30px;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+  --control-h: 40px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, .25);
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Sora', system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(110, 168, 255, .10), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(124, 132, 255, .08), transparent 60%),
+    var(--bg);
+  min-height: 100dvh;
+}
+
+#app {
+  width: 100%;
+  max-width: 1080px;
+  height: 100dvh;
+  max-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding: var(--s3);
+  gap: var(--s3);
+}
+
+/* keyboard focus is always visible, mouse focus never is */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+button, input, select { font-family: inherit; }
+button:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+.brand { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.brand .logo { color: var(--accent); font-size: 18px; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+.brand-name { font-weight: 700; font-size: 18px; letter-spacing: .5px; }
+.brand-sub { color: var(--muted-2); font-size: 12px; }
+
+.transport { display: flex; align-items: center; gap: var(--s4); }
+.play-btn {
+  width: 54px; height: 54px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  color: var(--accent);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .2s ease, border-color .2s;
+  box-shadow: var(--shadow);
+  flex: 0 0 auto;
+}
+.play-btn:hover { border-color: var(--accent); }
+.play-btn:active { transform: scale(.94); }
+.play-btn.playing { border-color: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft), var(--shadow); }
+.play-btn .icon-stop { display: none; }
+.play-btn.playing .icon-play { display: none; }
+.play-btn.playing .icon-stop { display: block; color: var(--danger); }
+.play-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+.transport .tempo-readout {
+  font-family: var(--mono);
+  display: flex; align-items: baseline; gap: var(--s1);
+}
+.transport .tempo-readout #bpmReadout { font-size: 26px; font-weight: 700; }
+.transport .tempo-readout .unit { color: var(--muted-2); font-size: 12px; }
+
+/* ---------- View nav ---------- */
+.viewnav {
+  display: flex;
+  gap: var(--s1);
+  background: var(--bg-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: var(--s1);
+}
+.viewnav button {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  padding: var(--s3) var(--s3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color .15s, background .15s;
+}
+.viewnav button.active { background: var(--card-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.viewnav button:hover:not(.active) { color: var(--text); background: rgba(255, 255, 255, .03); }
+
+/* ---------- Main scroll area ---------- */
+#main { overflow-y: auto; overflow-x: hidden; padding: 2px var(--s1) var(--s5) 2px; }
+#main::-webkit-scrollbar { width: 8px; }
+#main::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+
+.view { display: flex; flex-direction: column; gap: var(--s4); }
+.view-presets, .view-song { max-width: 860px; margin: 0 auto; width: 100%; }
+
+.view-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s3); flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+.view-head-text { min-width: 0; }
+.view-head h2 { font-size: 16px; font-weight: 600; letter-spacing: .3px; }
+.view-sub { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin-top: var(--s1); max-width: 56ch; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  min-height: var(--control-h);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  padding: 0 var(--s4);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, color .15s, transform .08s, filter .15s;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-primary.is-stop { background: var(--danger); color: #2a0710; }
+.init-btn { flex: 0 0 auto; }
+.init-btn.armed {
+  background: var(--danger-soft); border-color: var(--danger); color: var(--danger);
+}
+.btn-ghost { background: var(--bg-soft); border-color: var(--line); color: var(--text); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+.icon-btn {
+  width: 34px; height: 34px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent;
+  color: var(--muted); font-size: 15px; line-height: 1;
+  border-radius: var(--radius-xs); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.icon-btn:hover:not(:disabled) { color: var(--text); background: var(--card-2); border-color: var(--line); }
+.icon-btn.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Shared form controls ----------
+   Kept to single-class specificity on purpose: every component rule below
+   (.bpm-input, .stepper-input, …) must be able to override it. */
+.text-input, .field-input, select, textarea {
+  min-height: var(--control-h);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-xs);
+  outline: 0;
+  transition: border-color .15s, background .15s;
+}
+.text-input { font-family: var(--sans); }
+.text-input:focus, .field-input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+::placeholder { color: var(--muted-2); }
+
+select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa3b7' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right var(--s3) center;
+  padding-right: var(--s6);
+  cursor: pointer;
+}
+
+.grow { flex: 1 1 auto; min-width: 0; }
+
+.field { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.field-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .7px;
+  text-transform: uppercase; color: var(--muted-2);
+}
+
+.stepper { display: flex; align-items: stretch; gap: var(--s1); }
+.stepper-btn {
+  width: 34px; min-height: var(--control-h);
+  background: var(--bg-soft); border: 1px solid var(--line); color: var(--muted);
+  border-radius: var(--radius-xs); font-size: 16px; line-height: 1; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.stepper-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.stepper-input { width: 58px; text-align: center; padding-left: var(--s1); padding-right: var(--s1); }
+
+.savebar { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.savebar .text-input { min-width: 180px; }
+
+/* ---------- Tempo strip ----------
+   One horizontal band: readout · slider · tap. Height is the budget that
+   buys the layer list its space, so nothing here stacks on desktop. */
+.tempo-bar {
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s4);
+  box-shadow: var(--shadow-sm);
+  display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+}
+.tempo-readout-main {
+  display: flex; align-items: baseline; gap: var(--s3);
+  flex: 0 0 auto;
+}
+.tempo-slide { display: flex; align-items: center; gap: var(--s3); flex: 1 1 240px; min-width: 180px; }
+.bpm-step {
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%;
+  background: var(--card-2); border: 1px solid var(--line); color: var(--text);
+  font-size: 19px; line-height: 1; cursor: pointer;
+  transition: border-color .15s, background .15s, transform .08s, color .15s;
+}
+.bpm-step:hover { border-color: var(--accent); color: var(--accent); }
+.bpm-step:active { transform: scale(.92); background: var(--accent-soft); }
+
+.bpm-num { display: flex; align-items: baseline; gap: var(--s2); }
+.bpm-input {
+  width: 3.6ch; min-height: 0;
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  padding: 0; border-radius: 0;
+  font-family: var(--mono); font-size: 40px; font-weight: 700; line-height: 1.1;
+  color: var(--text); text-align: right;
+  transition: border-color .15s;
+}
+.bpm-input:focus { border-bottom-color: var(--accent); }
+.bpm-unit { font-family: var(--mono); font-size: 11px; color: var(--muted-2); letter-spacing: 1px; }
+
+.tempo-mark {
+  font-size: 12px; color: var(--accent); letter-spacing: .5px; white-space: nowrap;
+  padding: var(--s1) var(--s3); border-radius: 999px;
+  background: var(--accent-soft);
+}
+
+.bpm-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px; border-radius: 6px;
+  background: var(--line); outline: 0; cursor: pointer;
+}
+.bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); border: 4px solid var(--bg);
+  cursor: pointer; box-shadow: 0 0 0 1px var(--accent);
+}
+.bpm-slider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); border: 4px solid var(--bg); cursor: pointer;
+}
+
+.tempo-actions {
+  display: flex; align-items: center;
+  gap: var(--s2); flex: 0 0 auto;
+}
+.tap-btn {
+  min-height: var(--control-h);
+  padding: 0 var(--s4);
+  background: var(--card-2); border: 1px solid var(--line); color: var(--text);
+  border-radius: var(--radius-sm); font-weight: 600; font-size: 13.5px;
+  cursor: pointer; user-select: none;
+  transition: transform .08s, border-color .15s, background .15s;
+}
+.tap-btn:hover { border-color: var(--accent); }
+.tap-btn:active { transform: scale(.96); background: var(--accent-soft); border-color: var(--accent); }
+.tempo-chip {
+  min-height: var(--control-h); min-width: 46px;
+  background: transparent; border: 1px solid var(--line-soft); color: var(--muted);
+  border-radius: var(--radius-xs); font-family: var(--mono); font-size: 12px;
+  cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+}
+.tempo-chip:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- Layers bar ---------- */
+.layers-bar {
+  display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+}
+.layers-bar h2 { font-size: 16px; font-weight: 600; letter-spacing: .3px; flex: 0 0 auto; cursor: help; }
+.layers-bar .legend { flex: 1 1 auto; }
+.layers-bar .btn { flex: 0 0 auto; }
+
+/* ---------- Legend ---------- */
+.legend {
+  display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4);
+  font-size: 11.5px; color: var(--muted);
+  padding: var(--s1) 2px;
+}
+.leg-item { display: flex; align-items: center; gap: var(--s2); }
+.leg-sw { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); }
+.leg-sw.art-accent, .bm-sw.art-accent { background: var(--text); }
+.leg-sw.art-normal, .bm-sw.art-normal { background: var(--accent); }
+.leg-sw.art-ghost, .bm-sw.art-ghost { background: var(--ghost); }
+.leg-sw.art-silent, .bm-sw.art-silent { background: var(--line); border: 1px solid var(--muted-2); }
+
+/* ---------- Layers ---------- */
+.layer-rows { display: flex; flex-direction: column; gap: var(--s3); }
+
+.layer-row {
+  --layer-color: var(--accent);
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s4);
+  display: flex; flex-direction: column; gap: var(--s3);
+  transition: border-color .2s, opacity .2s;
+}
+.layer-row::before {
+  content: ''; position: absolute; left: 0; top: var(--s2); bottom: var(--s2);
+  width: 3px; border-radius: 0 3px 3px 0; background: var(--layer-color); opacity: .8;
+}
+.layer-row:hover { border-color: var(--line); }
+.layer-row.disabled { opacity: .5; }
+
+/* One quiet line: toggle · colour · name · BPM · volume · delete.
+   No field labels here — the controls are secondary to the pattern, and
+   every one of them carries a tooltip and an aria-label instead. */
+.layer-rail {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--s2); min-width: 0;
+}
+.layer-toggle {
+  display: grid; place-items: center; flex: 0 0 auto; cursor: pointer;
+  height: 30px; width: 24px;
+}
+.layer-enable { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.layer-color-dot {
+  width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, .14); cursor: pointer; padding: 0;
+  transition: transform .12s;
+}
+.layer-color-dot:hover { transform: scale(1.2); }
+.layer-name {
+  /* a real min-width, so a crowded rail wraps rather than squeezing the
+     name down to nothing */
+  flex: 1 1 84px; min-width: 96px; height: 30px;
+  background: transparent; border: 0; border-bottom: 1px solid transparent;
+  outline: 0; padding: 0 var(--s1); border-radius: 0; min-height: 0;
+  font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--text);
+  transition: border-color .15s;
+}
+.layer-name:hover { border-bottom-color: var(--line); }
+.layer-name:focus { border-bottom-color: var(--accent); }
+
+.layer-bpm {
+  width: 48px; height: 30px; min-height: 0; flex: 0 0 auto;
+  background: transparent; border: 1px solid var(--line-soft); color: var(--muted);
+  font-family: var(--mono); font-size: 11px; text-align: center;
+  padding: 0 var(--s1); border-radius: var(--radius-xs); outline: 0;
+  transition: border-color .15s, color .15s;
+}
+.layer-bpm:hover { color: var(--text); }
+.layer-bpm:focus { border-color: var(--accent); color: var(--text); }
+/* Sound · BPM · volume group. `display: contents` makes the wrapper vanish
+   from layout, so on wide screens these sit directly in the rail exactly as
+   if they were not wrapped at all. Phones re-materialise it as its own row. */
+.layer-controls { display: contents; }
+
+/* Voice picker — same quiet weight as the layer BPM field, so the
+   pattern still owns the row. */
+.layer-sound {
+  width: 88px; height: 30px; min-height: 0; flex: 0 0 auto;
+  /* background-color, not background: the shorthand would wipe the
+     chevron background-image inherited from the generic select rule */
+  background-color: transparent; border: 1px solid var(--line-soft); color: var(--muted);
+  font-family: var(--mono); font-size: 11px;
+  padding: 0 var(--s5) 0 var(--s2); border-radius: var(--radius-xs);
+  background-position: right var(--s2) center;
+  transition: border-color .15s, color .15s;
+}
+.layer-sound:hover { color: var(--text); }
+.layer-sound:focus { border-color: var(--accent); color: var(--text); }
+.layer-sound option { background: var(--bg-soft); color: var(--text); }
+
+.layer-del { width: 28px; height: 28px; font-size: 14px; }
+.vol-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 52px; flex: 0 0 auto; height: 4px; border-radius: 4px;
+  background: var(--line); padding: 0; cursor: pointer; min-height: 0; border: 0;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--muted); cursor: pointer; border: 0;
+  transition: background .15s;
+}
+.vol-slider:hover::-webkit-slider-thumb { background: var(--accent); }
+.vol-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--muted); cursor: pointer; border: 0;
+}
+.vol-slider:hover::-moz-range-thumb { background: var(--accent); }
+
+/* Beat track — beats laid out along time.
+   Every beat is an equal flex share and the dials scale to fit, so the bar
+   ALWAYS occupies exactly one row: no wrapping, no horizontal scrolling.
+   Few beats => big dials; many beats => smaller ones. */
+.layer-grid {
+  display: flex; gap: var(--s1); align-items: center;
+  min-width: 0;
+  /* The track must never scroll or wrap. Nothing is expected to paint outside
+     a dial any more — the playback lift and its ring are both bounded inside
+     it — so this is a plain clip; the small margin is only insurance, since
+     Safari ignores overflow-clip-margin and nothing may depend on it. */
+  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 6px;
+}
+.beat-pie {
+  flex: 1 1 0; min-width: 0;
+  display: flex; justify-content: center;
+  container-type: inline-size;
+}
+.beat-dial {
+  position: relative;
+  width: 100%; max-width: var(--dial-max, 72px);
+  aspect-ratio: 1;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  transition: background .15s, box-shadow .15s;
+}
+.beat-pie:hover .beat-dial { background: var(--bg-soft); }
+/* The ring says WHICH BEAT, and holds for the whole beat; the lifted wedge
+   inside it says which subdivision. Together they read in one glance.
+   Inset, so like the wedge it cannot escape the dial — an outset ring plus
+   blur was the other thing being clipped on the first and last dial. The
+   dial square is wider than the pie inside it, so an inset ring still reads
+   as a ring drawn AROUND the pie. */
+.beat-pie.active .beat-dial {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--layer-color),
+              inset 0 0 12px -4px var(--layer-color);
+}
+.beat-num {
+  position: absolute; top: 0; left: 2px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted-2);
+  pointer-events: none;
+}
+.beat-pie.active .beat-num { color: var(--accent); }
+.pie { width: 100%; height: 100%; cursor: pointer; overflow: visible; }
+/* Beat 1 marker — an inset halo rather than an outward drop-shadow, for the
+   same reason: the first dial sits flush against the edge of the track, so
+   anything drawn outside it gets cut. Yields to the active ring. */
+.beat-pie[data-beat="0"]:not(.active) .beat-dial {
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+/* The sounding slice lifts out of the disc. A colour or stroke change alone
+   was too quiet to follow on a small dial with six or eight wedges — the
+   outward pop is readable at a glance and at any size, because it breaks the
+   circle's silhouette rather than competing inside it. transform-box:view-box
+   is what makes the scale pivot on the dial centre instead of the wedge's own
+   bounding box. */
+/* Slices REST below full size and reach full size while sounding, rather
+   than resting at full size and growing past it. The lift looks identical,
+   but the largest a slice can ever be is R + half its stroke = 29.25 of the
+   60-unit viewBox — inside the dial by construction, on every device.
+   Everything here is in viewBox units, so the margin holds at a 16px dial
+   exactly as at a 76px one; a px-based glow would not. */
+.pie-slice {
+  --slice-rest: .93;
+  stroke: var(--layer-color);
+  stroke-width: 1.6;
+  transform: scale(var(--slice-rest));
+  transform-box: view-box; transform-origin: 30px 30px;
+  /* fill is deliberately NOT transitioned. Two reasons: a beat marker wants
+     an instant onset, not a fade that eats most of a fast pulse; and
+     transitioning fill towards a var()-derived colour freezes it at the
+     start value indefinitely, so the highlight never appeared at all. */
+  transition: opacity .12s, stroke-width .1s, transform .09s ease-out;
+}
+.pie-slice.art-accent { fill: var(--text); }
+.pie-slice.art-normal { fill: var(--accent); }
+.pie-slice.art-ghost { fill: var(--ghost); }
+.pie-slice.art-silent { fill: var(--line); stroke: var(--muted-2); stroke-dasharray: 2 2; }
+.pie-slice:hover { opacity: .7; }
+
+/* The sounding slice, stated three ways so no single feature has to carry it:
+   a lit FILL, a white outline, and full size. All three are plain SVG paint
+   and geometry — no drop-shadow (px-based, so it spilled past the dial) and
+   no filter (WebKit does not apply CSS filters to SVG children dependably,
+   which is why this highlight worked on desktop but not on iOS). */
+.pie-slice.active {
+  stroke: #fff; stroke-width: 2.5;
+  transform: scale(1);
+}
+.pie-slice.art-normal.active { fill: var(--accent-lit); }
+.pie-slice.art-ghost.active  { fill: var(--ghost-lit); }
+/* a white stroke on the white accent wedge is invisible — outline it instead */
+.pie-slice.art-accent.active { fill: #fff; stroke: var(--accent); }
+/* silent slices still pulse: the playhead must stay visible through a rest,
+   or the pattern looks like it stops */
+.pie-slice.art-silent.active {
+  fill: var(--muted-2); stroke: #fff; stroke-dasharray: none;
+}
+.pie-hub { fill: var(--card); stroke: rgba(255, 255, 255, .1); cursor: pointer; }
+.beat-pie:hover .pie-hub { fill: var(--card-2); }
+.pie-n {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  fill: var(--muted); pointer-events: none; user-select: none;
+}
+.beat-pie:hover .pie-n { fill: var(--text); }
+.beat-rm {
+  /* just inside the dial's corner, not 2px outside it: the track clips at the
+     dial's own height, so a negative offset was shaved off the top */
+  position: absolute; top: 1px; right: 1px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--card-2); border: 1px solid var(--line); color: var(--muted);
+  font-size: 11px; line-height: 1; cursor: pointer; padding: 0;
+  display: grid; place-items: center;
+  opacity: 0; transition: opacity .15s, color .15s, background .15s;
+}
+.beat-pie:hover .beat-rm, .beat-rm:focus-visible { opacity: 1; }
+.beat-rm:hover { color: var(--danger); border-color: var(--danger); }
+/* narrow, full-height rail so it never competes with the dials for width */
+.beat-add {
+  flex: 0 0 32px; align-self: stretch; min-height: 44px;
+  border-radius: var(--radius-xs);
+  background: transparent; border: 1.5px dashed var(--line); color: var(--muted);
+  font-size: 20px; font-weight: 300; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.beat-add:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-soft); }
+
+/* On a dense bar the corner badges would swamp the dial. Declared after the
+   badge rules above so its display:none wins. */
+@container (max-width: 46px) {
+  .beat-num, .beat-rm { display: none; }
+}
+
+/* ---------- Beat popup menu ---------- */
+.beat-menu {
+  position: fixed; z-index: 100;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--s4); width: 264px;
+  box-shadow: 0 16px 44px -10px rgba(0, 0, 0, .7);
+  font-size: 12px; color: var(--text);
+  display: flex; flex-direction: column; gap: var(--s4);
+}
+.bm-title {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s2);
+  font-weight: 700; font-size: 13px;
+}
+.bm-close {
+  width: 26px; height: 26px; flex: 0 0 auto;
+  background: transparent; border: 0; color: var(--muted);
+  font-size: 16px; line-height: 1; border-radius: var(--radius-xs); cursor: pointer;
+}
+.bm-close:hover { color: var(--text); background: var(--card-2); }
+.bm-sub, .bm-slices { display: flex; flex-direction: column; gap: var(--s2); }
+.bm-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .7px;
+  color: var(--muted-2); font-weight: 600;
+}
+.bm-chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.bm-chip {
+  background: var(--bg-soft); border: 1px solid var(--line-soft); color: var(--text);
+  font-family: var(--mono); font-size: 12px; width: 32px; height: 32px;
+  border-radius: var(--radius-xs); cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.bm-chip:hover { border-color: var(--accent); color: var(--accent); }
+.bm-chip.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.bm-fills { display: grid; grid-template-columns: repeat(4, 1fr); }
+.bm-fill {
+  min-width: 0; height: 30px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-xs);
+  background: var(--bg-soft); color: var(--muted);
+  font-size: 10.5px; text-transform: capitalize; cursor: pointer;
+  transition: color .12s, border-color .12s;
+}
+/* the swatch makes this row the articulation key as well as a control */
+.bm-fill .bm-sw { width: 9px; height: 9px; border-radius: 2px; }
+.bm-fill-label { line-height: 1; }
+.bm-fill:hover { color: var(--text); border-color: var(--accent); }
+.bm-fill.art-accent:hover { color: var(--text); }
+.bm-fill.art-normal:hover { color: var(--accent); }
+.bm-fill.art-ghost:hover { color: var(--ghost); }
+.bm-fill.art-silent:hover { color: var(--muted); }
+.bm-slices { max-height: 220px; overflow-y: auto; }
+.bm-slicepick { display: flex; align-items: center; gap: var(--s2); }
+.bm-idx { font-family: var(--mono); font-size: 10px; color: var(--muted-2); width: 1.5ch; }
+.bm-sw { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
+.bm-art { flex: 1; min-height: 32px; font-size: 11px; padding: var(--s1) var(--s2); }
+
+/* ---------- Lists (presets) ---------- */
+.card-list { display: flex; flex-direction: column; gap: var(--s3); }
+.list-row {
+  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--line-soft);
+  padding: var(--s3) var(--s4); border-radius: var(--radius-sm);
+  transition: border-color .15s;
+}
+.list-row:hover { border-color: var(--line); }
+.list-info { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.inline-name {
+  background: transparent; border: 0; border-bottom: 1px solid transparent;
+  outline: 0; padding: 2px 0; border-radius: 0; min-height: 0;
+  font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--text);
+  transition: border-color .15s;
+}
+.inline-name:hover { border-bottom-color: var(--line); }
+.inline-name:focus { border-bottom-color: var(--accent); }
+.list-desc { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.list-acts { display: flex; gap: var(--s2); align-items: center; flex: 0 0 auto; }
+
+.empty {
+  color: var(--muted-2); font-size: 13px; line-height: 1.6;
+  padding: var(--s6) var(--s4); text-align: center;
+  border: 1px dashed var(--line-soft); border-radius: var(--radius);
+}
+.empty.small { padding: var(--s4); font-size: 12px; }
+.notice {
+  font-size: 12.5px; color: var(--warn);
+  background: rgba(255, 184, 107, .08); border: 1px solid rgba(255, 184, 107, .25);
+  padding: var(--s3) var(--s4); border-radius: var(--radius-sm);
+}
+
+/* ---------- Song ---------- */
+.section-card {
+  background: var(--card); border: 1px solid var(--line-soft);
+  border-radius: var(--radius); padding: var(--s4);
+  display: flex; flex-direction: column; gap: var(--s3);
+  transition: border-color .2s, box-shadow .2s;
+}
+.section-card.playing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+
+.section-head { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.section-index {
+  width: 26px; height: 26px; flex: 0 0 auto;
+  display: grid; place-items: center; border-radius: var(--radius-xs);
+  background: var(--bg-soft); border: 1px solid var(--line-soft);
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.section-card.playing .section-index { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.section-acts { display: flex; align-items: center; gap: var(--s2); flex: 0 0 auto; }
+
+.section-parts { display: flex; flex-direction: column; gap: var(--s2); }
+
+.part-row {
+  position: relative; overflow: hidden;
+  background: var(--bg-soft); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color .2s, background .2s;
+}
+.part-row:hover { border-color: var(--line); }
+.part-row.playing { border-color: var(--accent); background: var(--card-2); }
+.part-progress {
+  position: absolute; inset: 0;
+  background: var(--accent-soft);
+  transform: scaleX(0); transform-origin: left center;
+  pointer-events: none;
+}
+.part-body {
+  position: relative;
+  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  padding: var(--s3);
+}
+.part-index {
+  width: 22px; height: 22px; flex: 0 0 auto;
+  display: grid; place-items: center; border-radius: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted-2);
+  border: 1px solid var(--line-soft);
+}
+.part-row.playing .part-index { color: var(--accent); border-color: var(--accent); }
+.part-select { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: var(--s1); }
+.part-desc { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); }
+.part-repeat { display: flex; flex-direction: column; gap: var(--s1); flex: 0 0 auto; }
+.part-acts { display: flex; align-items: center; gap: var(--s1); flex: 0 0 auto; margin-left: auto; }
+
+.part-add {
+  background: transparent; border: 1px dashed var(--line); color: var(--muted);
+  font-size: 12.5px; font-weight: 600; min-height: var(--control-h);
+  padding: 0 var(--s4); border-radius: var(--radius-sm); cursor: pointer; width: 100%;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.part-add:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-soft); }
+
+/* ---------- Status bar ---------- */
+.statusbar {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s3);
+  font-family: var(--mono); font-size: 11px; color: var(--muted-2);
+  padding: var(--s1) var(--s1) 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--s2);
+}
+.status-right { display: flex; gap: var(--s4); flex: 0 0 auto; }
+#statusPos { color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 560px) {
+  /* MOBILE FIRST — the beat dials are the only thing on this screen you
+     actually aim at, so every other pixel is negotiable. Chrome above the
+     layer list is trimmed hard (brand, nav, tempo readout, headings, legend)
+     and the saving is handed to --dial-max below. Controls stay at a 36px
+     tap target; only type and padding shrink. */
+  --control-h: 36px;
+
+  .topbar { gap: var(--s3); }
+  .brand .logo, .brand-name { font-size: 15px; }
+  .brand-sub { font-size: 10px; }
+  .transport { gap: var(--s3); }
+  .play-btn { width: 44px; height: 44px; }
+  .play-btn svg { width: 20px; height: 20px; }
+  .transport .tempo-readout #bpmReadout { font-size: 20px; }
+  .transport .tempo-readout .unit { font-size: 10px; }
+
+  .viewnav { border-radius: 11px; }
+  .viewnav button { font-size: 13px; padding: var(--s2); }
+
+  .tempo-bar { padding: var(--s2) var(--s3); }
+  .tempo-mark { font-size: 10.5px; padding: 2px var(--s2); }
+  .bpm-unit { font-size: 10px; }
+  .bpm-step { width: 34px; height: 34px; font-size: 17px; }
+
+  .layers-bar h2 { font-size: 13px; }
+  .layers-bar .btn { font-size: 12.5px; padding: 0 var(--s3); }
+  .view-head h2 { font-size: 14px; }
+  .statusbar { font-size: 10px; }
+
+  /* the legend is a reference, not a control — it reads fine this small */
+  .legend { font-size: 10px; gap: var(--s1) var(--s3); padding: 0 2px; }
+  .leg-sw { width: 10px; height: 10px; border-radius: 3px; }
+
+  .layer-meta { gap: var(--s3); }
+  .vol-slider { width: 64px; }
+  .view-sub { display: none; }
+  .part-acts { margin-left: 0; }
+  .savebar .btn { flex: 1 1 auto; }
+  /* the payoff: dials get the reclaimed height, and a bar of 1–3 beats now
+     grows into it instead of being capped well below the available width */
+  .beat-dial { --dial-max: 76px; }
+  .layer-row { padding: var(--s2) var(--s3); }
+  .layer-rows { gap: var(--s2); }
+  .layers-bar .btn { min-height: 32px; }
+  /* horizontal space counts too: a 4-beat bar is width-capped, not
+     height-capped, so the add-beat affordance gives some columns back */
+  .beat-add { flex: 0 0 24px; font-size: 17px; }
+  .layer-grid { gap: 2px; }
+
+  /* The beat menu becomes a bottom sheet: a 264px popover pinned to a finger
+     lands half off-screen and under the hand that opened it. */
+  .beat-menu.bm-sheet {
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: auto; max-height: 78vh; overflow-y: auto;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 0;
+    padding: var(--s4) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
+    animation: sheet-up .18s ease-out;
+  }
+  .bm-sheet .bm-title { font-size: 14px; }
+  .bm-sheet .bm-close { width: 34px; height: 34px; font-size: 19px; }
+  /* all eight subdivisions on one row — 38px fixed chips wrap and strand
+     the 8 on a line of its own */
+  .bm-sheet .bm-chips:not(.bm-fills) {
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--s1);
+  }
+  .bm-sheet .bm-chip { width: auto; height: 38px; font-size: 13px; }
+  /* grab-handle: says "sheet" before anything is read */
+  .bm-sheet .bm-title::before {
+    content: ''; position: absolute; top: 6px; left: 50%; translate: -50% 0;
+    width: 36px; height: 4px; border-radius: 4px; background: var(--line);
+  }
+  .bm-sheet .bm-title { position: relative; padding-top: var(--s3); }
+  .bm-sheet .bm-fill { height: 38px; }
+  .bm-sheet .bm-art { min-height: 34px; }
+  .bm-sheet .bm-slices { max-height: 34vh; }
+
+  /* tempo strip in two rows: readout + tap, then the slider.
+     The −/+ buttons cover fine nudging, so the ±5 chips step aside. */
+  .tempo-bar { gap: var(--s2) var(--s3); }
+  .tempo-readout-main { flex: 1 1 auto; order: 1; }
+  .tempo-actions { order: 2; }
+  .tempo-slide { order: 3; flex-basis: 100%; }
+  .tempo-chip { display: none; }
+  .bpm-input { font-size: 30px; }
+
+  /* The layer list is what the user came for, so nothing sits above it but
+     the transport and the tempo. The "Layers" heading is redundant next to a
+     list of layers, the legend now lives in the beat menu (whose fill chips
+     carry the same swatches), and Init / + Add layer move BELOW the list —
+     they are end-of-list actions, and down there they cost no fixed height.
+     `order` alone does this: every other child of .view-main defaults to 0. */
+  .layers-bar {
+    order: 1;
+    gap: var(--s2); padding-top: var(--s1);
+  }
+  .layers-bar h2, .layers-bar .legend { display: none; }
+  .layers-bar .btn { flex: 1 1 auto; }
+
+  /* Six controls no longer fit one phone-width line, so the rail becomes two:
+     identity (mute · colour · name · delete) above, sound settings below.
+     The auto margin on delete eats the leftover space on the first line,
+     which is what forces the break at exactly that point. */
+  .layer-rail { flex-wrap: wrap; row-gap: var(--s1); }
+  .layer-del { order: 4; margin-left: auto; }
+  .layer-controls {
+    order: 5; display: flex; align-items: center;
+    flex: 1 1 100%; gap: var(--s2); min-width: 0;
+  }
+  .layer-sound { flex: 1 1 auto; width: auto; }
+  .vol-slider { flex: 1 1 64px; width: auto; }
+  /* keep a part to two compact rows instead of three tall ones */
+  .part-body { row-gap: var(--s2); padding: var(--s2) var(--s3); }
+  .part-repeat { flex-direction: row; align-items: center; gap: var(--s2); }
+  .part-acts { margin-left: auto; gap: 0; }
+  .part-acts .icon-btn { width: 30px; height: 30px; }
+  .part-repeat .stepper-btn { width: 30px; }
+  .part-repeat .stepper-input { width: 44px; }
+}
+
+@media (min-width: 720px) {
+  #app { padding: var(--s5); gap: var(--s4); }
+  .view-presets, .view-song { gap: var(--s5); }
+
+  /* Main view owns its own scrolling: tempo strip and layer headings stay
+     pinned, only the layer list moves. That is what keeps the whole
+     pattern in view without scrolling the page. */
+  #main.pinned { overflow: hidden; }
+  .view-main {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: var(--s3);
+  }
+  .view-main .layer-rows {
+    overflow-y: auto; min-height: 0;
+    padding: 2px var(--s2) 0 2px;
+    scrollbar-width: thin;
+  }
+  .view-main .layer-rows { scrollbar-color: var(--line) transparent; }
+  .view-main .layer-rows::-webkit-scrollbar { width: 8px; }
+  .view-main .layer-rows::-webkit-scrollbar-track { background: transparent; }
+  .view-main .layer-rows::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+}
+
+@media (min-width: 900px) {
+  /* Narrow control rail beside the pattern. The rail is deliberately a
+     small fraction of the row — the beats are the visual feedback that
+     matters, so they get the rest of the width. */
+  .layer-row {
+    display: grid;
+    /* widened from 236px to seat the voice picker without crushing the name */
+    grid-template-columns: 348px minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--s3);
+  }
+  /* the rail must stay on one line — wrapping costs a whole row per layer */
+  .layer-row .layer-rail { flex-wrap: nowrap; gap: var(--s1); }
+  /* the name must stay readable — everything else gives ground first */
+  .layer-row .layer-sound { width: 78px; }
+  .layer-row .layer-name { min-width: 76px; }
+  .layer-row .vol-slider { width: 44px; }
+  .layer-row .layer-grid {
+    border-left: 1px solid var(--line-soft); padding-left: var(--s3);
+    /* keeps every layer the same height even when its dials are small */
+    min-height: 72px;
+  }
+  /* Dial cap: the tallest dial that still leaves four layers on screen at a
+     760px window. The dials shrink below this on their own when a bar has
+     many beats. */
+  .layer-row .beat-dial { --dial-max: 72px; }
+  .view-main .layer-rows { gap: var(--s2); }
+}
+
+@keyframes sheet-up { from { transform: translateY(12px); opacity: .4 } to { transform: none; opacity: 1 } }
+
+@media (hover: none) {
+  /* touch devices have no hover, so never hide affordances behind it */
+  .beat-rm { opacity: 1; }
+  /* a long press on a dial opens the beat menu, so the OS text-selection
+     callout must not fire on top of it */
+  .beat-pie {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none; user-select: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
