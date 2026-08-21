@@ -207,6 +207,50 @@ function tick(ctx, dest, time, a, tone) {
 
 const IMPL = { click, wood, bell, beep, tick };
 
+/* ------------------------------------------------------------
+   Releasing a hit once it has finished.
+
+   Nothing above disconnects itself, and a node still connected to the
+   destination stays reachable, so it can never be collected. Desktop engines
+   reclaim finished nodes anyway and hide this completely; mobile ones do not.
+   Measured on the trainer at 90 BPM with both pads being tapped: 55 nodes a
+   second created, and 3756 of the first 4838 still alive after 88 seconds.
+   The graph grows until the audio thread gives up and playback stops dead —
+   which is why it took "a certain number of bars", was worse while tapping
+   (taps add hits of their own), hit both apps, and never showed on a laptop.
+
+   The fix is structural: every node a hit builds hangs off that hit's own
+   `hub` gain, so the whole subgraph is released by disconnecting one node.
+   ------------------------------------------------------------ */
+
+/* How long after `time` a hit of each voice can still be sounding: its
+   longest decay plus tail, rounded up. Only used to decide when the nodes are
+   safe to release, so erring long costs nothing but a little memory. */
+const TAIL = { click: 0.15, wood: 0.2, bell: 0.8, beep: 0.2, tick: 0.15 };
+const TAIL_MAX = 0.8;
+
+/* One sweeper per AudioContext, on one timer, which stops itself as soon as
+   there is nothing left to release — a timer per hit would be 55 a second. */
+const sweepers = new WeakMap();
+function releaseAfter(ctx, hub, when) {
+  let s = sweepers.get(ctx);
+  if (!s) { s = { queue: [], timer: null }; sweepers.set(ctx, s); }
+  s.queue.push({ hub, when });
+  if (s.timer !== null) return;
+  s.timer = setInterval(() => {
+    // ctx.currentTime, not wall clock: while the context is suspended it does
+    // not advance, and those hits genuinely have not played yet
+    const now = ctx.currentTime;
+    let kept = 0;
+    for (const item of s.queue) {
+      if (item.when > now) { s.queue[kept++] = item; continue; }
+      try { item.hub.disconnect(); } catch (e) { /* already gone */ }
+    }
+    s.queue.length = kept;
+    if (!kept) { clearInterval(s.timer); s.timer = null; }
+  }, 500);
+}
+
 export const VOICES = [
   { id: 'click',   name: 'Click',   desc: 'Hard studio tick — cuts through a loud room' },
   { id: 'wood',    name: 'Wood',    desc: 'Clave / rim — warm, dry, good for downbeats' },
@@ -230,15 +274,18 @@ export const isVoice = id => VALID.has(resolveVoice(id));
    carries its volume — `gain` is only for callers that want a one-off trim
    (an audition, say), and at 1 it costs no extra node. */
 export function playVoice(ctx, dest, time, voiceId, art, gain = 1, pitchOffset = 0) {
-  const impl = IMPL[resolveVoice(voiceId)] || IMPL[DEFAULT_VOICE];
+  const id = resolveVoice(voiceId);
+  const impl = IMPL[id] || IMPL[DEFAULT_VOICE];
   const a = (art === 'accent' || art === 'ghost') ? art : 'normal';
   if (gain <= 0.0005) return;
 
-  let out = dest;
-  if (gain !== 1) {
-    out = ctx.createGain();
-    out.gain.value = gain;
-    out.connect(dest);
-  }
-  impl(ctx, out, time, a, semis(pitchOffset));
+  /* One hub per hit. It carries the caller's trim — which is what the old
+     conditional gain node did — and doubles as the single handle the sweeper
+     needs to let go of everything this hit built. One extra node per hit buys
+     the release of the five to eight it is holding. */
+  const hub = ctx.createGain();
+  hub.gain.value = gain;
+  hub.connect(dest);
+  impl(ctx, hub, time, a, semis(pitchOffset));
+  releaseAfter(ctx, hub, time + (TAIL[id] || TAIL_MAX));
 }
