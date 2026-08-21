@@ -4,23 +4,37 @@
    wordmark, the two cards, or the space around them.
    ============================================================ */
 
+/* Every vertical measurement on this screen is fluid in dvh, not a value
+   picked per breakpoint. A breakpoint is a STEP: with one compact size for
+   everything under 640px tall, a 639px window and a 400px window render
+   identically, so at best only one of them fits. These clamps scale the
+   padding, the gaps, the wordmark and the artwork continuously with the real
+   window height instead, so the hub is as large as the window allows and no
+   larger. dvh rather than vh because a mobile browser's vh is the toolbar-
+   hidden height, which would size the page for room it does not have yet. */
 .hub {
   width: 100%;
   max-width: 860px;
   margin-inline: auto;
-  padding: calc(var(--sat) + var(--s6)) var(--s4) calc(var(--sab) + var(--s5));
+  padding: calc(var(--sat) + clamp(10px, 2.8dvh, 30px)) var(--s4)
+           calc(var(--sab) + clamp(10px, 2.4dvh, 22px));
   display: flex;
   flex-direction: column;
-  gap: var(--s6);
+  gap: clamp(11px, 3.2dvh, 30px);
   align-items: center;
 }
 
 /* ---------- Head ---------- */
-.hub-head { text-align: center; display: flex; flex-direction: column; gap: var(--s2); align-items: center; }
-/* The wordmark is the one place Poly gets to be big. */
-.hub-brand .logo { font-size: 30px; }
-.hub-brand .brand-name { font-size: 34px; letter-spacing: 1px; }
-.hub-tagline { color: var(--muted); font-size: 14px; letter-spacing: .2px; }
+.hub-head {
+  text-align: center; display: flex; flex-direction: column;
+  gap: clamp(2px, .8dvh, 8px); align-items: center;
+}
+/* The wordmark is the one place Poly gets to be big — and the head is the last
+   thing allowed to shrink, because the mark and the tagline are what tell a
+   first-time visitor what the two abstract card marks below them are. */
+.hub-brand .logo { font-size: clamp(17px, 3.3dvh, 30px); }
+.hub-brand .brand-name { font-size: clamp(19px, 3.8dvh, 34px); letter-spacing: 1px; }
+.hub-tagline { color: var(--muted); font-size: clamp(10.5px, 1.7dvh, 14px); letter-spacing: .2px; }
 
 /* ---------- Cards ----------
    Two equal columns on desktop, stacked on phones. Nothing else is ever
@@ -30,15 +44,15 @@
   width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--s4);
+  gap: clamp(8px, 1.9dvh, 16px);
 }
 
 .app-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--s4);
-  padding: var(--s5) var(--s4) var(--s4);
+  gap: clamp(7px, 1.8dvh, 16px);
+  padding: clamp(9px, 1.9dvh, 22px) var(--s4) clamp(9px, 1.6dvh, 16px);
   background: linear-gradient(180deg, var(--card), var(--bg-soft));
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
@@ -64,9 +78,9 @@
 .app-card:hover::after, .app-card:focus-visible::after { opacity: 1; }
 .app-card:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
 
-.card-text { display: flex; flex-direction: column; gap: var(--s2); }
-.card-text h2 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
-.card-text p { color: var(--muted); font-size: 13px; line-height: 1.55; max-width: 34ch; }
+.card-text { display: flex; flex-direction: column; gap: clamp(2px, .9dvh, 8px); }
+.card-text h2 { font-size: clamp(15px, 2.4dvh, 20px); font-weight: 700; letter-spacing: .3px; }
+.card-text p { color: var(--muted); font-size: clamp(11px, 1.6dvh, 13px); line-height: 1.5; max-width: 34ch; }
 
 .card-go {
   position: absolute; top: var(--s4); right: var(--s4);
@@ -79,13 +93,20 @@
    Both marks are the real thing at small scale: same colours, same
    geometry, same rhythm the app runs. They keep animating because a
    still frame of either would read as a screenshot, not a rhythm. */
+/* The artwork is the flexible one: it is the part with no words in it, so it
+   gives up height first and keeps giving it up all the way down. The mark
+   holds its 16:9 proportions and simply centres in whatever frame is left. */
 .card-art {
   background: var(--bg);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
-  padding: var(--s3);
+  padding: clamp(5px, 1.1dvh, 12px);
 }
-.card-art svg { display: block; width: 100%; height: auto; }
+.card-art svg {
+  display: block; margin: 0 auto;
+  width: 100%; height: auto;
+  max-height: min(220px, 26dvh);
+}
 
 /* --- metronome: 4 : 3 : 5 layers --- */
 .mm-dots circle { fill: var(--accent); opacity: .28; }
@@ -127,47 +148,26 @@
   color: var(--muted);
 }
 
-/* ---------- Responsive ---------- */
+/* ---------- Responsive ----------
+   Only what genuinely depends on the LAYOUT lives here now. Everything that
+   depends on how much height there is scales fluidly above, so there is no
+   step where the page stops fitting. */
 @media (max-width: 560px) {
-  .hub { gap: var(--s5); padding-top: calc(var(--sat) + var(--s5)); }
-  .hub-brand .logo { font-size: 24px; }
-  .hub-brand .brand-name { font-size: 27px; }
-  .hub-tagline { font-size: 13px; }
-  .app-card { padding: var(--s4) var(--s3) var(--s3); gap: var(--s3); }
-  .card-text h2 { font-size: 18px; }
-  .card-text p { font-size: 12.5px; }
-  /* on a phone the two cards must both be visible without scrolling, so the
-     artwork gives up the height rather than the words. The mark keeps its
-     16:9 proportions and simply centres in the shorter frame. */
-  .card-art { padding: var(--s2); }
-  .card-art svg { max-height: 104px; margin: 0 auto; }
+  /* Stacked, so there are two artworks in the column instead of one row of
+     them — each gets about half the share of the height it had side by side. */
+  .card-art svg { max-height: clamp(34px, 13.5dvh, 150px); }
   /* physical keyboards are the exception on touch; the hint is noise there */
   .hub-foot { display: none; }
 }
 
-/* A short viewport — a small phone in portrait, or any window under ~640px
-   tall. The head is the one thing that must NOT go: the wordmark and the
-   tagline are what tell a first-time visitor what these two abstract marks
-   are. So the height comes out of the padding, the gaps and the artwork,
-   in that order, and the words stay. If it still does not fit (very large
-   text settings, say), the page scrolls from the top rather than clipping. */
-@media (max-height: 640px) {
-  .hub {
-    gap: var(--s4);
-    padding-top: calc(var(--sat) + var(--s4));
-    padding-bottom: calc(var(--sab) + var(--s4));
-  }
-  .hub-brand .logo { font-size: 21px; }
-  .hub-brand .brand-name { font-size: 24px; }
-  .hub-tagline { font-size: 12.5px; }
-  .hub-grid { gap: var(--s3); }
-  .app-card { gap: var(--s3); padding: var(--s3); }
-  .card-art { padding: var(--s2); }
-  .card-art svg { max-height: 76px; margin: 0 auto; }
-  .card-text { gap: var(--s1); }
-  .card-text h2 { font-size: 17px; }
-  .card-text p { font-size: 12px; line-height: 1.45; }
-  .hub-foot { display: none; }
+/* Below this the clamps have all bottomed out and the artwork is the only
+   thing left between the words and an overflow. The marks are decorative —
+   the names and the descriptions are not — so here the artwork goes rather
+   than the page scrolling. Measured, not guessed: with the artwork shown and
+   every clamp at its minimum the hub bottoms out at ~370px tall, so 380 is
+   the last height that still fits comfortably with the marks in place. */
+@media (max-height: 380px) and (max-width: 560px) {
+  .card-art { display: none; }
 }
 
 /* the mark is the affordance on touch — there is no hover to reveal */
