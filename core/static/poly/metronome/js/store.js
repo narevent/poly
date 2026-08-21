@@ -61,6 +61,10 @@ function migrateLayer(l) {
   // layers saved before voices existed fall back to the default one; a layer
   // on a voice that has since been retired is moved to its replacement
   l.sound = isVoice(l.sound) ? resolveVoice(l.sound) : DEFAULT_VOICE;
+  // Per-layer BPM is gone. A value left in a saved layer would still be
+  // honoured by the engine with nothing on screen to show or undo it, so it
+  // is cleared here rather than left as invisible state.
+  l.bpm = null;
 }
 
 export function load() {

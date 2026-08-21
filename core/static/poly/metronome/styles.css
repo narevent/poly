@@ -180,28 +180,16 @@
   transition: transform .12s;
 }
 .layer-color-dot:hover { transform: scale(1.2); }
+/* Derived from the bar length, so it is a label and not a field. Mono,
+   because it reads as a time signature and the digits should not shift. */
 .layer-name {
-  /* a real min-width, so a crowded rail wraps rather than squeezing the
-     name down to nothing */
-  flex: 1 1 84px; min-width: 96px; height: 30px;
-  background: transparent; border: 0; border-bottom: 1px solid transparent;
-  outline: 0; padding: 0 var(--s1); border-radius: 0; min-height: 0;
-  font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--text);
-  transition: border-color .15s;
+  flex: 0 0 auto; height: 30px; display: flex; align-items: center;
+  padding: 0 var(--s1);
+  font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text);
+  white-space: nowrap;
 }
-.layer-name:hover { border-bottom-color: var(--line); }
-.layer-name:focus { border-bottom-color: var(--accent); }
 
-.layer-bpm {
-  width: 48px; height: 30px; min-height: 0; flex: 0 0 auto;
-  background: transparent; border: 1px solid var(--line-soft); color: var(--muted);
-  font-family: var(--mono); font-size: 11px; text-align: center;
-  padding: 0 var(--s1); border-radius: var(--radius-xs); outline: 0;
-  transition: border-color .15s, color .15s;
-}
-.layer-bpm:hover { color: var(--text); }
-.layer-bpm:focus { border-color: var(--accent); color: var(--text); }
-/* Sound · BPM · volume group. `display: contents` makes the wrapper vanish
+/* Sound · volume group. `display: contents` makes the wrapper vanish
    from layout, so on wide screens these sit directly in the rail exactly as
    if they were not wrapped at all. Phones re-materialise it as its own row. */
 .layer-controls { display: contents; }
@@ -222,7 +210,19 @@
 .layer-sound:focus { border-color: var(--accent); color: var(--text); }
 .layer-sound option { background: var(--bg-soft); color: var(--text); }
 
-.layer-del { width: 28px; height: 28px; font-size: 14px; }
+/* Sat immediately after the volume slider at 28px, which made it read as part
+   of the slider rather than as the layer's own destructive action. Now it is a
+   full-size target, carries a border so it reads as a button, and auto-margin
+   parks it at the far end of the rail with clear space in between. */
+.layer-del {
+  width: 34px; height: 34px; font-size: 17px; flex: 0 0 auto;
+  margin-left: auto;
+  border-color: var(--line-soft);
+  color: var(--muted);
+}
+.layer-del:hover:not(:disabled) {
+  color: var(--danger); border-color: var(--danger); background: var(--danger-soft);
+}
 .vol-slider {
   -webkit-appearance: none; appearance: none;
   width: 52px; flex: 0 0 auto; height: 4px; border-radius: 4px;
@@ -244,19 +244,26 @@
    Every beat is an equal flex share and the dials scale to fit, so the bar
    ALWAYS occupies exactly one row: no wrapping, no horizontal scrolling.
    Few beats => big dials; many beats => smaller ones. */
+/* The track used to be one non-wrapping flex row where each beat took 1/N of
+   the width, so dials shrank without limit: twelve beats on a 375px phone gave
+   23px dials — a third of a touch target — and the per-beat remove button was
+   hidden by the container query below, which made a dense bar impossible to
+   edit OR undo. A bar you can get into and not out of is the real bug.
+
+   So the dials now have a floor and the track WRAPS instead. auto-fit with a
+   minmax floor keeps every dial at least --dial-min wide, lets a short bar
+   grow into the full width as before, and folds a long one onto a second row —
+   into the vertical space this view has going spare anyway. Every beat stays
+   visible and every beat stays hittable, at any count. */
 .layer-grid {
-  display: flex; gap: var(--s1); align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--dial-min, 48px), 1fr));
+  gap: var(--s1);
+  align-items: center;
   min-width: 0;
-  /* The track must never scroll or wrap. Nothing is expected to paint outside
-     a dial any more — the playback lift and its ring are both bounded inside
-     it — so this is a plain clip; the small margin is only insurance, since
-     Safari ignores overflow-clip-margin and nothing may depend on it. */
-  overflow: hidden;
-  overflow: clip;
-  overflow-clip-margin: 6px;
 }
 .beat-pie {
-  flex: 1 1 0; min-width: 0;
+  min-width: 0;
   display: flex; justify-content: center;
   container-type: inline-size;
 }
@@ -360,9 +367,9 @@
 }
 .beat-pie:hover .beat-rm, .beat-rm:focus-visible { opacity: 1; }
 .beat-rm:hover { color: var(--danger); border-color: var(--danger); }
-/* narrow, full-height rail so it never competes with the dials for width */
+/* one more cell in the track, so it wraps along with the dials */
 .beat-add {
-  flex: 0 0 32px; align-self: stretch; min-height: 44px;
+  align-self: stretch; min-height: 44px;
   border-radius: var(--radius-xs);
   background: transparent; border: 1.5px dashed var(--line); color: var(--muted);
   font-size: 20px; font-weight: 300; cursor: pointer;
@@ -371,10 +378,20 @@
 }
 .beat-add:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-soft); }
 
-/* On a dense bar the corner badges would swamp the dial. Declared after the
-   badge rules above so its display:none wins. */
-@container (max-width: 46px) {
-  .beat-num, .beat-rm { display: none; }
+/* the beat menu's own remove — full width, and unmistakably destructive */
+.bm-rm {
+  width: 100%; margin-top: var(--s3);
+  color: var(--danger); border-color: rgba(255, 107, 129, .3);
+  background: var(--danger-soft);
+}
+.bm-rm:hover { border-color: var(--danger); background: rgba(255, 107, 129, .2); }
+
+/* A last-ditch guard for a slot somehow narrower than the floor above. It no
+   longer fires in normal use — --dial-min keeps every slot at 48px — and it
+   deliberately no longer hides .beat-rm: removing a beat has to stay reachable
+   at every size, because it is the only way back out of a bar with too many. */
+@container (max-width: 40px) {
+  .beat-num { display: none; }
 }
 
 /* ---------- Beat popup menu ---------- */
@@ -565,10 +582,10 @@
   .layer-row { padding: var(--s2) var(--s3); }
   .layer-rows { gap: var(--s2); }
   .layers-bar .btn { min-height: 32px; }
-  /* horizontal space counts too: a 4-beat bar is width-capped, not
-     height-capped, so the add-beat affordance gives some columns back */
-  .beat-add { flex: 0 0 24px; font-size: 17px; }
-  .layer-grid { gap: 2px; }
+  .beat-add { font-size: 17px; }
+  /* a phone track is narrow, so the floor comes down to the smallest dial that
+     is still a real touch target — below this it wraps rather than shrinks */
+  .layer-grid { gap: 2px; --dial-min: 44px; }
 
   /* The beat menu becomes a bottom sheet: a 264px popover pinned to a finger
      lands half off-screen and under the hand that opened it. */
@@ -625,7 +642,7 @@
      The auto margin on delete eats the leftover space on the first line,
      which is what forces the break at exactly that point. */
   .layer-rail { flex-wrap: wrap; row-gap: var(--s1); }
-  .layer-del { order: 4; margin-left: auto; }
+  .layer-del { order: 4; }
   .layer-controls {
     order: 5; display: flex; align-items: center;
     flex: 1 1 100%; gap: var(--s2); min-width: 0;
@@ -641,7 +658,15 @@
   .part-repeat .stepper-input { width: 44px; }
 }
 
-@media (min-width: 720px) {
+/* Width alone is the wrong gate for the pinned layout below. A phone in
+   landscape is 812px WIDE and 375px TALL: it was taking the desktop layout,
+   whose minmax(0, 1fr) then collapsed the layer list to 2px inside an
+   overflow:hidden main — the layers were still in the DOM, squeezed to
+   nothing, with no way to scroll to them. Pinning the tempo strip only pays
+   off when there is height left over for a usable list underneath it, so it
+   now takes height as well as width; anything shorter falls back to #main
+   scrolling the whole view, which is what landscape needs. */
+@media (min-width: 720px) and (min-height: 600px) {
   #app { padding: calc(var(--sat) + var(--s5)) var(--s5) calc(var(--sab) + var(--s5)); gap: var(--s4); }
   .view-presets, .view-song { gap: var(--s5); }
 
@@ -681,7 +706,6 @@
   .layer-row .layer-rail { flex-wrap: nowrap; gap: var(--s1); }
   /* the name must stay readable — everything else gives ground first */
   .layer-row .layer-sound { width: 78px; }
-  .layer-row .layer-name { min-width: 76px; }
   .layer-row .vol-slider { width: 44px; }
   .layer-row .layer-grid {
     border-left: 1px solid var(--line-soft); padding-left: var(--s3);
