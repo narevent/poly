@@ -216,6 +216,11 @@ function stop(quiet) {
 
 function scheduleTick() {
   if (!playing) return;
+  /* iOS can suspend the context out from under a running exercise — an
+     interruption, a route change, a call — and nothing resumes it on its own,
+     so the exercise keeps running silently. The metronome has carried this
+     watchdog for a while; the trainer needs it for the same reason. */
+  if (actx.state === 'suspended') actx.resume();
   syncClock();
   const now = actx.currentTime, rel = now - startTime;
   ensureEvents(rel);
