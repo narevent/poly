@@ -7,7 +7,7 @@
 .hub {
   width: 100%;
   max-width: 860px;
-  margin: 0 auto;
+  margin-inline: auto;
   padding: calc(var(--sat) + var(--s6)) var(--s4) calc(var(--sab) + var(--s5));
   display: flex;
   flex-direction: column;
@@ -107,9 +107,10 @@
 @keyframes mm5 { from { transform: translateX(0) } to { transform: translateX(150px) } }
 
 /* --- trainer: 3 against 4, flowing to the playhead --- */
-/* the same two voice colours the trainer itself uses */
-.pt-a circle { fill: var(--accent); }
-.pt-b circle { fill: #9b8cff; }
+/* the same two voice colours the trainer itself uses — the saturated pair,
+   so the card previews how much louder that app looks than the metronome */
+.pt-a circle { fill: #35d6ff; }
+.pt-b circle { fill: #b167ff; }
 .pt-band { fill: rgba(255, 255, 255, .04); }
 .pt-head { stroke: var(--text); stroke-width: 1.5; opacity: .75; }
 /* One cycle is 96 units wide; the note rows repeat every 96, so sliding by
@@ -141,6 +142,31 @@
   .card-art { padding: var(--s2); }
   .card-art svg { max-height: 104px; margin: 0 auto; }
   /* physical keyboards are the exception on touch; the hint is noise there */
+  .hub-foot { display: none; }
+}
+
+/* A short viewport — a small phone in portrait, or any window under ~640px
+   tall. The head is the one thing that must NOT go: the wordmark and the
+   tagline are what tell a first-time visitor what these two abstract marks
+   are. So the height comes out of the padding, the gaps and the artwork,
+   in that order, and the words stay. If it still does not fit (very large
+   text settings, say), the page scrolls from the top rather than clipping. */
+@media (max-height: 640px) {
+  .hub {
+    gap: var(--s4);
+    padding-top: calc(var(--sat) + var(--s4));
+    padding-bottom: calc(var(--sab) + var(--s4));
+  }
+  .hub-brand .logo { font-size: 21px; }
+  .hub-brand .brand-name { font-size: 24px; }
+  .hub-tagline { font-size: 12.5px; }
+  .hub-grid { gap: var(--s3); }
+  .app-card { gap: var(--s3); padding: var(--s3); }
+  .card-art { padding: var(--s2); }
+  .card-art svg { max-height: 76px; margin: 0 auto; }
+  .card-text { gap: var(--s1); }
+  .card-text h2 { font-size: 17px; }
+  .card-text p { font-size: 12px; line-height: 1.45; }
   .hub-foot { display: none; }
 }
 

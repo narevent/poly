@@ -5,7 +5,7 @@
    beat's subdivision (so every step can have its own subdiv).
    ============================================================ */
 
-import { DEFAULT_VOICE, isVoice } from '../../shared/voices.js';
+import { DEFAULT_VOICE, isVoice, resolveVoice } from '../../shared/voices.js';
 
 const KEY = 'poly-metronome-v2';
 
@@ -58,8 +58,9 @@ function migrateLayer(l) {
   if (l.defaultSubdiv == null) l.defaultSubdiv = 1;
   if (l.tuplet) { /* legacy: fold into per-beat length */ delete l.tuplet; }
   if (typeof l.subdiv === 'number' && !l.beatPattern) { delete l.subdiv; }
-  // layers saved before voices existed fall back to the default one
-  if (!isVoice(l.sound)) l.sound = DEFAULT_VOICE;
+  // layers saved before voices existed fall back to the default one; a layer
+  // on a voice that has since been retired is moved to its replacement
+  l.sound = isVoice(l.sound) ? resolveVoice(l.sound) : DEFAULT_VOICE;
 }
 
 export function load() {

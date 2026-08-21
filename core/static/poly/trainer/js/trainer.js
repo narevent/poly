@@ -9,7 +9,7 @@
    here is the same click there — see shared/voices.js.
    ============================================================ */
 
-import { playVoice, VOICES, isVoice } from '../../shared/voices.js';
+import { playVoice, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
@@ -25,14 +25,15 @@ const PRESETS = [
 /* Canvas cannot read CSS custom properties, so the palette is restated here.
    These are the same tokens trainer.css uses — keep the two in step. */
 const COL = {
-  A: '#6ea8ff', B: '#9b8cff', unison: '#e7ecf3',
-  good: '#5fe3a1', ok: '#ffb86b', bad: '#ff6b81',
+  A: '#35d6ff', B: '#b167ff', unison: '#ffffff',
+  good: '#2dffab', ok: '#ffc247', bad: '#ff456e',
+  railA: 'rgba(53,214,255,.22)', railB: 'rgba(177,103,255,.22)',
 };
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
 /* ---------------- state ---------------- */
 let A = 3, B = 4, bpm = 90, tolMs = 50, latMs = 0;
-let voice = { A: 'cowbell', B: 'wood' };
+let voice = { A: 'click', B: 'beep' };
 let sound = { A: true, B: true, tap: true, count: true, hap: true };
 
 let playing = false, startTime = 0, cycleSec = 0;
@@ -41,6 +42,7 @@ let streak = 0, best = 0, evaluated = 0, goodCount = 0, errSum = 0, errN = 0;
 let hist = { A: [], B: [] };
 let floats = [];
 let lastBeat = { A: -1, B: -1 };
+let lastStreakShown = 0;
 
 /* ---------------- clock bridge ----------------
    Taps are stamped with the event's own hardware timestamp (the
@@ -120,8 +122,8 @@ function load() {
     if (typeof s.latMs === 'number') latMs = clamp(s.latMs, -120, 120);
     if (s.sound) sound = Object.assign(sound, s.sound);
     if (s.voice) {
-      if (isVoice(s.voice.A)) voice.A = s.voice.A;
-      if (isVoice(s.voice.B)) voice.B = s.voice.B;
+      if (isVoice(s.voice.A)) voice.A = resolveVoice(s.voice.A);
+      if (isVoice(s.voice.B)) voice.B = resolveVoice(s.voice.B);
     }
   } catch (e) { console.warn('load failed', e); }
 }
@@ -293,8 +295,13 @@ function noteMissed(e) {
 
 /* ---------------- stats ---------------- */
 function updateStats() {
+  const grew = streak > lastStreakShown;
   setStat('sStreak', streak);
   setStat('sBest', best);
+  // the streak counter kicks each time it climbs — the run is the score here,
+  // and it should register without being read
+  if (grew) flash($('sStreak'), 'bump', 300);
+  lastStreakShown = streak;
   $('stStreak').classList.toggle('hot', streak >= 10);
   setStat('sAcc', evaluated ? Math.round(goodCount / evaluated * 100) + '%' : '—');
   if (errN > 2) {
@@ -314,14 +321,12 @@ function setStat(id, v) {
 function pulsePad(v, grade, errMs, ghost) {
   flash($('pad' + v), grade, 230, GRADES);
   const el = $('err' + v);
-  if (errMs === null || errMs === undefined) {
-    el.textContent = ghost ? '—' : '';
-    el.style.color = 'var(--muted-2)';
-  } else {
-    el.textContent = (errMs > 0 ? '+' : '') + errMs.toFixed(0) + ' ms ' + (errMs > 0 ? 'late' : 'early');
-    el.style.color = grade === 'good' ? 'var(--good)' : (grade === 'ok' ? 'var(--warn)' : 'var(--danger)');
-  }
-  el.classList.add('show');
+  const blank = errMs === null || errMs === undefined;
+  if (blank) el.textContent = ghost ? 'no note' : '';
+  else el.textContent = (errMs > 0 ? '+' : '') + errMs.toFixed(0) + ' ms ' + (errMs > 0 ? 'late' : 'early');
+  // a blank reading (a tap with nothing to score) leaves the pill hidden
+  // rather than showing an empty outline
+  el.className = 'err' + (el.textContent ? ' show' : '') + (blank ? '' : ' ' + grade);
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 700);
   if (!ghost) pushHist(v, grade);
@@ -459,7 +464,7 @@ function draw(rel) {
 
   // lane rails
   ctx.lineWidth = 1;
-  [[yA, 'rgba(110,168,255,.16)'], [yB, 'rgba(155,140,255,.16)']].forEach(([y, c]) => {
+  [[yA, COL.railA], [yB, COL.railB]].forEach(([y, c]) => {
     ctx.strokeStyle = c;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
   });
@@ -540,7 +545,9 @@ function draw(rel) {
   pg.addColorStop(.5, 'rgba(231,236,243,.85)');
   pg.addColorStop(1, 'rgba(231,236,243,.28)');
   ctx.strokeStyle = pg; ctx.lineWidth = 1.5;
+  ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.moveTo(playX, H * 0.07); ctx.lineTo(playX, H * 0.93); ctx.stroke();
+  ctx.shadowBlur = 0;
 
   // floating error labels
   const now = performance.now();
