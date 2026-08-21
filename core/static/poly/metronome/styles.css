@@ -268,29 +268,31 @@
    into the vertical space this view has going spare anyway. Every beat stays
    visible and every beat stays hittable, at any count. */
 .layer-grid {
-  display: grid;
-  /* A literal, not minmax(var(--x), 1fr). A custom property inside minmax()
-     inside repeat() is the most fragile thing in this file: if a browser fails
-     to compute it, the declaration falls back to `unset` — which for
-     grid-template-columns is `none` — and every dial drops into one implicit
-     column. The phone override below restates the whole value rather than
-     swapping a variable inside it. */
-  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  /* Every dimension here is a definite pixel length, on purpose.
+     Two rounds of this track's layout collapsed on iOS WebKit while rendering
+     correctly in Chromium — first the dials painted over the controls beneath
+     them, then, once clipped, they vanished entirely, which means they were
+     being laid out outside their own container both times. Rather than guess
+     at which modern primitive misbehaves there, the track no longer uses any:
+     no grid auto-fit, no 1fr, no aspect-ratio, no percentage width or height,
+     no container queries. Flex wrap with fixed-size items is the most boring
+     thing that does this job, and boring is what it needs to be.
+     Size still varies with the screen — through --dial, at the breakpoints
+     below — it is just resolved to a length before layout rather than during. */
+  --dial: 56px;
+  display: flex; flex-wrap: wrap;
   gap: var(--s1);
   align-items: center;
   min-width: 0;
-  /* Nothing here may paint over the controls below it. The dials and their
-     ring are bounded inside their own box, so this only ever clips a fault. */
-  overflow: hidden;
 }
 .beat-pie {
-  width: 100%; min-width: 0;
-  display: flex; justify-content: center;
+  flex-grow: 0; flex-shrink: 0; flex-basis: auto;
+  width: var(--dial); height: var(--dial);
+  display: flex; align-items: center; justify-content: center;
 }
 .beat-dial {
   position: relative;
-  width: 100%; max-width: var(--dial-max, 72px);
-  aspect-ratio: 1;
+  width: var(--dial); height: var(--dial);
   display: grid; place-items: center;
   border-radius: 50%;
   transition: background .15s, box-shadow .15s;
@@ -387,11 +389,11 @@
 }
 .beat-pie:hover .beat-rm, .beat-rm:focus-visible { opacity: 1; }
 .beat-rm:hover { color: var(--danger); border-color: var(--danger); }
-/* one more cell in the track, so it wraps along with the dials. Definite
-   height, not align-self: stretch — a stretched cell takes the whole row's
-   height, and a wrapped row can be far taller than a dial. */
+/* one more cell in the track, so it wraps along with the dials — and the same
+   definite square, so a wrapped row can never be taller than one dial */
 .beat-add {
-  align-self: center; width: 100%; height: 44px; min-height: 0;
+  flex-grow: 0; flex-shrink: 0;
+  align-self: center; width: var(--dial); height: var(--dial); min-height: 0;
   border-radius: var(--radius-xs);
   background: transparent; border: 1.5px dashed var(--line); color: var(--muted);
   font-size: 20px; font-weight: 300; cursor: pointer;
@@ -597,14 +599,12 @@
   .savebar .btn { flex: 1 1 auto; }
   /* the payoff: dials get the reclaimed height, and a bar of 1–3 beats now
      grows into it instead of being capped well below the available width */
-  .beat-dial { --dial-max: 76px; }
+  .layer-grid { --dial: 48px; }
   .layer-row { padding: var(--s2) var(--s3); }
   .layer-rows { gap: var(--s2); }
   .layers-bar .btn { min-height: 32px; }
   .beat-add { font-size: 17px; }
-  /* a phone track is narrow, so the floor comes down to the smallest dial that
-     is still a real touch target — below this it wraps rather than shrinks */
-  .layer-grid { gap: 2px; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
+  .layer-grid { gap: 2px; }
 
   /* The beat menu becomes a bottom sheet: a 264px popover pinned to a finger
      lands half off-screen and under the hand that opened it. */
@@ -685,6 +685,25 @@
    off when there is height left over for a usable list underneath it, so it
    now takes height as well as width; anything shorter falls back to #main
    scrolling the whole view, which is what landscape needs. */
+/* A SHORT viewport, whatever its width. A phone in landscape is 812px wide, so
+   it misses every max-width: 560px rule above and takes the full desktop
+   chrome — heading, legend, tempo readout, ±5 chips — inside 375px of height,
+   which is why it showed mostly labels and buttons with the beats below the
+   fold. Height is the constraint here, not width, so this is keyed on height:
+   everything that is only labelling gives way, and the layers keep the room. */
+@media (max-height: 520px) {
+  .view-head, .view-sub { display: none; }
+  .layers-bar h2, .layers-bar .legend { display: none; }
+  .layers-bar { gap: var(--s2); }
+  .tempo-chip { display: none; }
+  .tempo-bar { gap: var(--s2) var(--s3); padding: var(--s2) var(--s3); }
+  .bpm-input { font-size: 26px; }
+  .layer-row { padding: var(--s2) var(--s3); gap: var(--s2); }
+  .layer-rows { gap: var(--s2); }
+  .view { gap: var(--s2); }
+  .layer-grid { --dial: 48px; }
+}
+
 @media (min-width: 720px) and (min-height: 600px) {
   #app { padding: calc(var(--sat) + var(--s5)) var(--s5) calc(var(--sab) + var(--s5)); gap: var(--s4); }
   .view-presets, .view-song { gap: var(--s5); }
@@ -738,7 +757,7 @@
   /* Dial cap: the tallest dial that still leaves four layers on screen at a
      760px window. The dials shrink below this on their own when a bar has
      many beats. */
-  .layer-row .beat-dial { --dial-max: 72px; }
+  .layer-row .layer-grid { --dial: 64px; }
   .view-main .layer-rows { gap: var(--s2); }
 }
 
