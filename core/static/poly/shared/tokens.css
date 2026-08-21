@@ -67,7 +67,9 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  height: 100%;
+  /* min-height, not height: a page that turns out to be taller than the
+     viewport must be allowed to grow and scroll rather than be cut off. */
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
@@ -80,7 +82,7 @@ html, body {
    sits on it, which is most of what makes them feel like one app. */
 body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(110, 168, 255, .10), transparent 60%),
@@ -89,6 +91,16 @@ body {
   min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Vertical centring is done by the child's own auto margins, NOT by
+   align-items: center. A flex item taller than a centred container overflows
+   equally in both directions, and the half that goes off the TOP can never be
+   scrolled back into view — on a 320x568 phone that silently ate the Poly
+   wordmark and the tagline off the top of the hub. Auto margins centre
+   identically while there is room to spare and collapse to zero when there is
+   not, so an over-tall page simply starts at its top and scrolls. */
+body > .hub,
+body > .app-shell { margin-block: auto; }
 
 /* keyboard focus is always visible, mouse focus never is */
 :focus-visible {

@@ -132,22 +132,40 @@ function wood(ctx, dest, time, a, tone) {
   bp.connect(hitG); hitG.connect(dest);
 }
 
-/* Cowbell — the 808 recipe: two detuned squares (587 / 845 Hz) through a
-   band-pass. The long-ish metallic ring makes it the clearest voice for a
-   slow cross-rhythm layer, where a short click would get lost. */
-function cowbell(ctx, dest, time, a, tone) {
+/* Bell — a struck glass bell. A sine carrier frequency-modulated by an
+   inharmonic partner (ratio 1.41, near root 2) gives the shimmering, slightly
+   detuned spectrum a real bell has. The modulation index decays much faster
+   than the body does, so the strike is bright and the ring that follows is
+   nearly pure — which is why it stays musical under a slow cross-rhythm
+   where a longer metallic voice would just clang. */
+function bell(ctx, dest, time, a, tone) {
   const P = {
-    accent: { gain: 0.40, dec: 0.30, q: 1.1 },
-    normal: { gain: 0.26, dec: 0.18, q: 1.3 },
-    ghost:  { gain: 0.09, dec: 0.09, q: 1.6 },
+    accent: { f: 880, gain: 0.34, dec: 0.50, idx: 8.0, ting: 0.26 },
+    normal: { f: 660, gain: 0.24, dec: 0.36, idx: 6.0, ting: 0.16 },
+    ghost:  { f: 660, gain: 0.09, dec: 0.16, idx: 4.0, ting: 0.05 },
   }[a];
+  const f = P.f * tone;
 
-  const body = env(ctx, time, P.gain, 0.0008, P.dec);
-  const bp = filter(ctx, 'bandpass', 2640 * tone, P.q);
-  const lp = filter(ctx, 'lowpass', 6000 * tone, 0.7);
-  osc(ctx, 'square', 587 * tone, time, P.dec).connect(bp);
-  osc(ctx, 'square', 845 * tone, time, P.dec).connect(bp);
-  bp.connect(lp); lp.connect(body); body.connect(dest);
+  // carrier is built by hand rather than via osc(), because its frequency
+  // param has to be wired up before it starts
+  const carrier = ctx.createOscillator();
+  carrier.type = 'sine';
+  carrier.frequency.setValueAtTime(f, time);
+  const modG = env(ctx, time, f * P.idx, 0.001, P.dec * 0.34);
+  osc(ctx, 'sine', f * 1.41, time, P.dec * 0.34).connect(modG);
+  modG.connect(carrier.frequency);
+  carrier.start(time);
+  carrier.stop(time + P.dec + 0.05);
+
+  const body = env(ctx, time, P.gain, 0.002, P.dec);
+  const lp = filter(ctx, 'lowpass', Math.min(9000 * tone, 17000), 0.7);
+  carrier.connect(body); body.connect(lp); lp.connect(dest);
+
+  // a high partial that dies almost at once — the "ting" of the mallet,
+  // before the fundamental settles into its ring
+  const ting = env(ctx, time, P.gain * P.ting, 0.0008, P.dec * 0.16);
+  osc(ctx, 'sine', f * 3.46, time, P.dec * 0.16).connect(ting);
+  ting.connect(dest);
 }
 
 /* Beep — a clean sine with a soft attack. No transient, no noise: the
@@ -187,26 +205,32 @@ function tick(ctx, dest, time, a, tone) {
   bp.connect(hp); hp.connect(g); g.connect(dest);
 }
 
-const IMPL = { click, wood, cowbell, beep, tick };
+const IMPL = { click, wood, bell, beep, tick };
 
 export const VOICES = [
   { id: 'click',   name: 'Click',   desc: 'Hard studio tick — cuts through a loud room' },
   { id: 'wood',    name: 'Wood',    desc: 'Clave / rim — warm, dry, good for downbeats' },
-  { id: 'cowbell', name: 'Cowbell', desc: 'Metallic ring — clearest for slow cross-rhythms' },
+  { id: 'bell',    name: 'Bell',    desc: 'Struck glass — a clear ring for slow cross-rhythms' },
   { id: 'beep',    name: 'Beep',    desc: 'Clean sine — soft, easy on the ears' },
   { id: 'tick',    name: 'Tick',    desc: 'Filtered noise — no pitch, never clashes' },
 ];
 
 export const DEFAULT_VOICE = 'click';
 const VALID = new Set(VOICES.map(v => v.id));
-export const isVoice = id => VALID.has(id);
+
+/* Voices that used to exist, mapped to the one that replaced them. Saved
+   patterns and trainer settings keep their old id forever, so every read of a
+   stored voice goes through resolveVoice() and comes back current. */
+const RETIRED = { cowbell: 'bell' };
+export const resolveVoice = id => RETIRED[id] || id;
+export const isVoice = id => VALID.has(resolveVoice(id));
 
 /* Play one hit. `art` is an articulation name; anything unknown is treated
    as `normal`. `dest` is normally the layer's mixer channel, which already
    carries its volume — `gain` is only for callers that want a one-off trim
    (an audition, say), and at 1 it costs no extra node. */
 export function playVoice(ctx, dest, time, voiceId, art, gain = 1, pitchOffset = 0) {
-  const impl = IMPL[voiceId] || IMPL[DEFAULT_VOICE];
+  const impl = IMPL[resolveVoice(voiceId)] || IMPL[DEFAULT_VOICE];
   const a = (art === 'accent' || art === 'ghost') ? art : 'normal';
   if (gain <= 0.0005) return;
 
