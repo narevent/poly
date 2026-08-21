@@ -62,20 +62,26 @@
   overflow: hidden;
   transition: border-color .2s, transform .12s ease, box-shadow .2s;
 }
-/* A pool of accent light bleeding up from behind the card on hover — the
-   same brand glow the app backgrounds use, so the hover reads as "this is
-   the thing that lights up". */
+/* Each card wears the hue of the app behind it — the same hue that app's own
+   brand dot and controls use once you are inside it. It is the hub's half of
+   the answer to "which one am I in": you pick blue or violet here, and the
+   screen you land on is still blue or violet. */
+.app-card { --hue: var(--app-metronome); }
+.app-card.card-trainer { --hue: var(--app-trainer); }
+
+/* A pool of that hue bleeding up from behind the card on hover, so the hover
+   reads as "this is the thing that lights up". */
 .app-card::after {
   content: '';
   position: absolute; inset: -40% -10% auto;
   height: 120%;
-  background: radial-gradient(50% 50% at 50% 50%, var(--accent-soft), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, var(--hue), transparent 70%);
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s;
 }
-.app-card:hover, .app-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
-.app-card:hover::after, .app-card:focus-visible::after { opacity: 1; }
+.app-card:hover, .app-card:focus-visible { border-color: var(--hue); transform: translateY(-2px); }
+.app-card:hover::after, .app-card:focus-visible::after { opacity: .14; }
 .app-card:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
 
 .card-text { display: flex; flex-direction: column; gap: clamp(2px, .9dvh, 8px); }
@@ -87,7 +93,7 @@
   color: var(--muted-2); font-size: 18px; line-height: 1;
   transition: color .2s, transform .2s;
 }
-.app-card:hover .card-go, .app-card:focus-visible .card-go { color: var(--accent); transform: translateX(3px); }
+.app-card:hover .card-go, .app-card:focus-visible .card-go { color: var(--hue); transform: translateX(3px); }
 
 /* ---------- Card artwork ----------
    Both marks are the real thing at small scale: same colours, same
@@ -130,8 +136,8 @@
 /* --- trainer: 3 against 4, flowing to the playhead --- */
 /* the same two voice colours the trainer itself uses — the saturated pair,
    so the card previews how much louder that app looks than the metronome */
-.pt-a circle { fill: #35d6ff; }
-.pt-b circle { fill: #b167ff; }
+.pt-a circle { fill: var(--accent); }
+.pt-b circle { fill: var(--app-trainer); }
 .pt-band { fill: rgba(255, 255, 255, .04); }
 .pt-head { stroke: var(--text); stroke-width: 1.5; opacity: .75; }
 /* One cycle is 96 units wide; the note rows repeat every 96, so sliding by
@@ -172,5 +178,5 @@
 
 /* the mark is the affordance on touch — there is no hover to reveal */
 @media (hover: none) {
-  .card-go { color: var(--accent); }
+  .card-go { color: var(--hue); }
 }

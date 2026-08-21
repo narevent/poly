@@ -25,9 +25,9 @@ const PRESETS = [
 /* Canvas cannot read CSS custom properties, so the palette is restated here.
    These are the same tokens trainer.css uses — keep the two in step. */
 const COL = {
-  A: '#35d6ff', B: '#b167ff', unison: '#ffffff',
-  good: '#2dffab', ok: '#ffc247', bad: '#ff456e',
-  railA: 'rgba(53,214,255,.22)', railB: 'rgba(177,103,255,.22)',
+  A: '#6ea8ff', B: '#9b8cff', unison: '#e7ecf3',
+  good: '#5fe3a1', ok: '#ffb86b', bad: '#ff6b81',
+  railA: 'rgba(110,168,255,.16)', railB: 'rgba(155,140,255,.16)',
 };
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
@@ -545,9 +545,7 @@ function draw(rel) {
   pg.addColorStop(.5, 'rgba(231,236,243,.85)');
   pg.addColorStop(1, 'rgba(231,236,243,.28)');
   ctx.strokeStyle = pg; ctx.lineWidth = 1.5;
-  ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.moveTo(playX, H * 0.07); ctx.lineTo(playX, H * 0.93); ctx.stroke();
-  ctx.shadowBlur = 0;
 
   // floating error labels
   const now = performance.now();

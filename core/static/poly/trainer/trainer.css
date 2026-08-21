@@ -5,49 +5,35 @@
    two pads — the parts only the trainer has.
    ============================================================ */
 
-/* The trainer is the game half of Poly, and it is allowed to look like one.
-   Same hues as the metronome — blue for A, violet for B, the brand pair — but
-   pushed to their saturated ends, because here colour is doing work: it is
-   what separates two simultaneous streams at a glance, and what makes a good
-   hit feel good. The metronome stays on the calm tokens; only this file
-   overrides them, and only inside the trainer page. */
+/* Poly's two apps share every layout decision on purpose — the same shell,
+   the same transport, the same status line — so what tells you which one you
+   are in is HUE, not shape. The metronome is blue; the trainer is violet, and
+   that runs all the way through: the brand dot, the focus rings, the slider
+   thumb, the transport. See --app in shared/tokens.css.
+
+   Deliberately restrained. An earlier pass gave this screen its own gradient
+   background, glowing text and blooming pads, and it read as a different
+   product rather than the other half of the same one. */
 :root {
-  --va: #35d6ff;
-  --vb: #b167ff;
-  --va-soft: rgba(53, 214, 255, .16);
-  --vb-soft: rgba(177, 103, 255, .16);
-  --va-glow: rgba(53, 214, 255, .55);
-  --vb-glow: rgba(177, 103, 255, .55);
+  /* the trainer's own hue — the brand dot, and every shared control */
+  --app: var(--app-trainer);
+  --accent: #9b8cff;
+  --accent-2: #8878ff;
+  --accent-soft: rgba(155, 140, 255, .16);
+
+  /* The two voices: Poly's blue and the trainer's own violet. Far enough
+     apart to tell two SIMULTANEOUS streams apart at a glance, which is the
+     whole job here — and voice B sharing the page accent is the same
+     relationship the metronome has, where its accent IS its layer colour. */
+  --va: #6ea8ff;
+  --vb: #9b8cff;
+  --va-soft: rgba(110, 168, 255, .16);
+  --vb-soft: rgba(155, 140, 255, .16);
   /* Unison is white — in Poly, white is already the accented articulation,
      and both voices landing together is the strongest moment in the bar.
      It also keeps unison clear of the three grade colours. */
-  --unison: #ffffff;
-
-  /* Grades, one step brighter than the shared status tokens: these fire on
-     every single tap, so they have to read instantly in peripheral vision. */
-  --good: #2dffab;
-  --warn: #ffc247;
-  --danger: #ff456e;
-  --danger-soft: rgba(255, 69, 110, .16);
-  --good-glow: rgba(45, 255, 171, .5);
+  --unison: var(--text);
 }
-
-/* The trainer's ground is the shared two-pool gradient, turned up and given
-   the trainer's own two colours — it is the first thing that says "this is
-   the other app" before a single control is read. */
-body.app-trainer {
-  background:
-    radial-gradient(1100px 560px at 82% -12%, rgba(53, 214, 255, .16), transparent 62%),
-    radial-gradient(900px 520px at -12% 108%, rgba(177, 103, 255, .15), transparent 62%),
-    radial-gradient(700px 700px at 50% 50%, rgba(110, 168, 255, .05), transparent 70%),
-    var(--bg);
-}
-
-/* Start is a green "go" here rather than the metronome's neutral accent —
-   the trainer has a run to begin, not just a sound to switch on. */
-.app-trainer .play-btn { color: var(--good); }
-.app-trainer .play-btn:hover { border-color: var(--good); }
-.app-trainer .play-btn:not(.playing) { box-shadow: 0 0 22px -6px var(--good-glow), var(--shadow); }
 
 /* The trainer never scrolls: the stage and the pads split whatever height
    the device has. A scrollbar here would mean a pad you have to hunt for. */
@@ -84,16 +70,16 @@ body.app-trainer {
 .ratio-cell:has(.ra) .ratio-step { --rc: var(--va); }
 .ratio-cell:has(.rb) .ratio-step { --rc: var(--vb); }
 .ratio-step:hover { color: var(--rc, var(--accent)); border-color: var(--rc, var(--accent)); }
-.ratio-step:active { background: color-mix(in srgb, var(--rc, var(--accent)) 22%, transparent); }
+.ratio-step:active { background: var(--accent-soft); }
 .ratio-val {
   display: flex; flex-direction: column; align-items: center;
   min-width: 30px; line-height: 1;
 }
 .ratio-num { font-family: var(--mono); font-size: 25px; font-weight: 700; }
-/* the two numbers glow in their own colour — on this screen the ratio is the
-   title of the exercise, not a setting you read once */
-.ratio-num.ra { color: var(--va); text-shadow: 0 0 20px var(--va-glow); }
-.ratio-num.rb { color: var(--vb); text-shadow: 0 0 20px var(--vb-glow); }
+/* each number carries its own voice's colour — that, and the tag under it,
+   is what stops a bare "3 : 4" being ambiguous about which is which */
+.ratio-num.ra { color: var(--va); }
+.ratio-num.rb { color: var(--vb); }
 .ratio-tag {
   font-size: 8.5px; font-weight: 600; letter-spacing: .8px;
   text-transform: uppercase; color: var(--muted-2); margin-top: 2px;
@@ -119,12 +105,9 @@ body.app-trainer {
 .stage {
   position: relative; overflow: hidden;
   border-radius: var(--radius);
-  background:
-    radial-gradient(120% 80% at 30% 0%, var(--va-soft), transparent 60%),
-    radial-gradient(120% 80% at 30% 100%, var(--vb-soft), transparent 60%),
-    linear-gradient(180deg, var(--card), var(--bg-soft));
-  border: 1px solid var(--line);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), var(--shadow-sm);
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-sm);
   flex: 1.3 1 0; min-height: 96px; max-height: 420px;
   display: flex; flex-direction: column;
 }
@@ -139,14 +122,8 @@ body.app-trainer {
 }
 .legend { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); font-size: 11.5px; color: var(--muted); }
 .leg-item { display: flex; align-items: center; gap: var(--s2); }
-.leg-sw {
-  width: 11px; height: 11px; border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  box-shadow: 0 0 10px -1px currentColor;
-}
-.sw-a { background: var(--va); color: var(--va-glow); }
-.sw-b { background: var(--vb); color: var(--vb-glow); }
-.sw-u { background: var(--unison); color: rgba(255, 255, 255, .5); }
+.leg-sw { width: 11px; height: 11px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); }
+.sw-a { background: var(--va); } .sw-b { background: var(--vb); } .sw-u { background: var(--unison); }
 .tol-note { font-family: var(--mono); font-size: 11px; color: var(--muted-2); white-space: nowrap; }
 
 .countin {
@@ -158,7 +135,6 @@ body.app-trainer {
 .countin b {
   font-family: var(--mono); font-size: 62px; font-weight: 700;
   letter-spacing: -.03em; color: var(--text);
-  text-shadow: 0 0 40px var(--va-glow);
 }
 .countin.on b { animation: pop .35s cubic-bezier(.2, .8, .25, 1); }
 @keyframes pop { from { transform: scale(.7); opacity: .2 } to { transform: scale(1); opacity: 1 } }
@@ -181,19 +157,9 @@ body.app-trainer {
   transition: color .2s;
 }
 .stat .v.sm { font-size: clamp(13px, 1.9vh, 16px); }
-/* a streak worth protecting announces itself, and keeps announcing it */
-.stat.hot {
-  border-color: var(--good);
-  background: linear-gradient(180deg, rgba(45, 255, 171, .12), transparent);
-  box-shadow: 0 0 22px -8px var(--good-glow);
-  animation: hotPulse 1.6s ease-in-out infinite;
-}
-.stat.hot .v { color: var(--good); text-shadow: 0 0 16px var(--good-glow); }
-.stat.hot .k { color: var(--good); opacity: .7; }
-@keyframes hotPulse {
-  0%, 100% { box-shadow: 0 0 22px -10px var(--good-glow); }
-  50%      { box-shadow: 0 0 26px -4px var(--good-glow); }
-}
+/* a streak worth protecting announces itself */
+.stat.hot { border-color: var(--good); }
+.stat.hot .v { color: var(--good); }
 
 /* every change of the streak number kicks it, so a run you are on is
    something you feel at the edge of vision rather than have to read */
@@ -216,11 +182,9 @@ body.app-trainer {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1);
   padding: var(--s3);
   border-radius: var(--radius);
-  border: 1px solid color-mix(in srgb, var(--c) 34%, var(--line-soft));
-  background:
-    radial-gradient(130% 100% at 50% 118%, var(--c-soft), transparent 62%),
-    linear-gradient(180deg, var(--card-2), var(--bg-soft));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), var(--shadow-sm);
+  border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  box-shadow: var(--shadow-sm);
   color: inherit; cursor: pointer;
   touch-action: none; -webkit-user-select: none; user-select: none;
   transition: transform .1s ease, border-color .18s, box-shadow .18s;
@@ -234,13 +198,9 @@ body.app-trainer {
   opacity: 0; pointer-events: none;
   transition: opacity .32s ease;
 }
-.pad.beat::before { opacity: .40; transition: opacity .04s; }
-/* the pulse is felt as much as seen: on its own beat the pad breathes out a
-   ring in its colour, which is the cue you catch without looking away from
-   the stage */
-.pad.beat { box-shadow: inset 0 0 0 1px var(--c), 0 0 30px -10px var(--c), var(--shadow-sm); }
-.pad:hover { border-color: color-mix(in srgb, var(--c) 60%, var(--line)); }
-.pad.pressed { transform: scale(.964); }
+.pad.beat::before { opacity: .22; transition: opacity .04s; }
+.pad:hover { border-color: var(--line); }
+.pad.pressed { transform: scale(.976); }
 
 .pad-lbl {
   font-size: 10.5px; font-weight: 600; letter-spacing: 1.1px;
@@ -249,35 +209,13 @@ body.app-trainer {
 .pad-cnt {
   font-family: var(--mono); font-size: clamp(26px, 5.4vh, 42px); font-weight: 700;
   line-height: 1; color: var(--c);
-  text-shadow: 0 0 26px var(--c);
 }
 .pad-key { font-family: var(--mono); font-size: 10px; color: var(--muted-2); letter-spacing: .5px; }
 
-/* Grades: the border still says it, so the pad's own colour stays readable —
-   but each grade also fires a one-shot bloom, sized by how good the hit was.
-   A `good` throws real light; a `bad` barely flickers. */
-.pad.good { --g: var(--good); }
-.pad.ok   { --g: var(--warn); }
-.pad.bad  { --g: var(--danger); }
-.pad.good, .pad.ok, .pad.bad {
-  border-color: var(--g);
-  box-shadow: inset 0 0 0 1px var(--g), var(--shadow-sm);
-}
-.pad.good { animation: bloomGood .23s ease-out; }
-.pad.ok   { animation: bloomOk .23s ease-out; }
-.pad.bad  { animation: bloomBad .23s ease-out; }
-@keyframes bloomGood {
-  from { box-shadow: inset 0 0 0 2px var(--good), 0 0 34px -2px var(--good-glow), var(--shadow-sm); }
-  to   { box-shadow: inset 0 0 0 1px var(--good), var(--shadow-sm); }
-}
-@keyframes bloomOk {
-  from { box-shadow: inset 0 0 0 2px var(--warn), 0 0 24px -8px var(--warn), var(--shadow-sm); }
-  to   { box-shadow: inset 0 0 0 1px var(--warn), var(--shadow-sm); }
-}
-@keyframes bloomBad {
-  from { box-shadow: inset 0 0 0 2px var(--danger), 0 0 18px -10px var(--danger), var(--shadow-sm); }
-  to   { box-shadow: inset 0 0 0 1px var(--danger), var(--shadow-sm); }
-}
+/* grades: the border says it, so the pad's own colour stays readable */
+.pad.good { border-color: var(--good); box-shadow: inset 0 0 0 1px var(--good), var(--shadow-sm); }
+.pad.ok   { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn), var(--shadow-sm); }
+.pad.bad  { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger), var(--shadow-sm); }
 
 /* ---------- Timing readouts ----------
    One per pad, in a reserved row directly ABOVE the pads. Inside the pad they
@@ -296,7 +234,7 @@ body.app-trainer {
   padding: 3px var(--s3); border-radius: 999px;
   font-family: var(--mono); font-size: 11.5px; font-weight: 700; white-space: nowrap;
   border: 1px solid currentColor;
-  background: color-mix(in srgb, currentColor 14%, var(--bg-soft));
+  background: var(--bg-soft);
   color: var(--muted-2);
   opacity: 0; transform: translateY(5px) scale(.92);
   transition: opacity .16s ease, transform .16s cubic-bezier(.2, .9, .3, 1);
@@ -311,18 +249,14 @@ body.app-trainer {
   display: flex; justify-content: center; gap: 3px;
 }
 .hist i { width: 5px; height: 5px; border-radius: 2px; background: var(--line); }
-.hist i { transition: background .15s, box-shadow .15s; }
-.hist i.good { background: var(--good); box-shadow: 0 0 8px -1px var(--good); }
-.hist i.ok { background: var(--warn); box-shadow: 0 0 8px -1px var(--warn); }
-.hist i.bad { background: var(--danger); box-shadow: 0 0 8px -1px var(--danger); }
+.hist i { transition: background .15s; }
+.hist i.good { background: var(--good); }
+.hist i.ok { background: var(--warn); }
+.hist i.bad { background: var(--danger); }
 
 /* how far into the current beat this voice is — a bar that empties into the hit */
 .approach { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255, 255, 255, .05); }
-.approach i {
-  display: block; height: 100%; width: 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 45%, transparent), var(--c));
-  box-shadow: 0 0 10px 0 var(--c);
-}
+.approach i { display: block; height: 100%; width: 0; background: var(--c); }
 
 #statusHint { color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -427,22 +361,15 @@ body.app-trainer {
   font-size: 13px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-align: center;
-  background: rgba(23, 26, 35, .92);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   opacity: 0; pointer-events: none;
   transition: opacity .22s, transform .22s cubic-bezier(.2, .9, .3, 1);
 }
 .toast.show { opacity: 1; transform: translateY(0); }
-.toast.good {
-  border-color: var(--good); color: var(--good);
-  box-shadow: 0 0 26px -8px var(--good-glow), var(--shadow);
-}
-.toast.bad {
-  border-color: var(--danger); color: var(--danger);
-  box-shadow: 0 0 26px -10px var(--danger), var(--shadow);
-}
+.toast.good { border-color: rgba(95, 227, 161, .5); color: var(--good); }
+.toast.bad { border-color: rgba(255, 107, 129, .45); color: var(--danger); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
@@ -460,7 +387,7 @@ body.app-trainer {
   /* "Voice A" shrinks to "A": the pad's colour and the readout above it
      already say which hand this is, and the row is short on width */
   .pad-lbl-full { display: none; }
-  .pad-lbl { font-size: 11px; letter-spacing: 1.4px; color: var(--c); opacity: .8; }
+  .pad-lbl { font-size: 11px; letter-spacing: 1.4px; color: var(--c); }
   #statusHint { display: none; }
   .toast { font-size: 12px; }
 }
@@ -483,5 +410,5 @@ body.app-trainer {
 }
 
 @media (hover: none) {
-  .pad:hover { border-color: color-mix(in srgb, var(--c) 34%, var(--line-soft)); }
+  .pad:hover { border-color: var(--line-soft); }
 }
