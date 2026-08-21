@@ -707,6 +707,21 @@ function showBeatMenu(layer, beatIdx, ev) {
   });
   m.appendChild(sl);
 
+  /* Removing a beat lives here as well as on the dial's own × badge. The badge
+     is small and hover-revealed on a desktop, and a bar dense enough to be hard
+     to hit is exactly the bar you most want to shorten — so the one action that
+     undoes "I added too many" gets a second, always-reachable route. */
+  if (layer.beatPattern.length > 1) {
+    const rm = btn('btn btn-ghost bm-rm', 'Remove beat ' + (beatIdx + 1),
+      'Delete this beat from the bar', () => {
+        closeBeatMenu();
+        removeBeat(layer, beatIdx);
+        layer.beats = layer.beatPattern.length;
+        persist(); buildEngineLayers(); renderPiesOnly();
+      });
+    m.appendChild(rm);
+  }
+
   /* On a phone this is a bottom sheet — a 264px popover anchored to a finger
      lands half off-screen and under the hand. CSS owns the sheet's geometry,
      so we must not write inline coordinates in that case. */
