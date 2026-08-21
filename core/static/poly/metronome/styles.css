@@ -223,17 +223,29 @@
 .layer-del:hover:not(:disabled) {
   color: var(--danger); border-color: var(--danger); background: var(--danger-soft);
 }
+/* Volume was a 52px-wide, 4px-tall element — 44px on a laptop, which is both
+   too short to set a level with any precision and a 4px-tall grab target. It
+   now takes the space the layer BPM field and the name input gave back: it
+   grows to fill whatever the rail has spare, and the element is 20px tall for
+   the hit area while the visible track stays 4px, drawn by the track
+   pseudo-elements rather than by the input's own background. */
 .vol-slider {
   -webkit-appearance: none; appearance: none;
-  width: 52px; flex: 0 0 auto; height: 4px; border-radius: 4px;
-  background: var(--line); padding: 0; cursor: pointer; min-height: 0; border: 0;
+  flex: 1 1 72px; width: auto; min-width: 64px;
+  height: 20px; background: transparent;
+  padding: 0; cursor: pointer; min-height: 0; border: 0;
+}
+.vol-slider::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 4px; background: var(--line);
 }
 .vol-slider::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
   background: var(--muted); cursor: pointer; border: 0;
+  margin-top: -5px;                 /* centres the thumb on the 4px track */
   transition: background .15s;
 }
 .vol-slider:hover::-webkit-slider-thumb { background: var(--accent); }
+.vol-slider::-moz-range-track { height: 4px; border-radius: 4px; background: var(--line); }
 .vol-slider::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%;
   background: var(--muted); cursor: pointer; border: 0;
@@ -704,9 +716,13 @@
   }
   /* the rail must stay on one line — wrapping costs a whole row per layer */
   .layer-row .layer-rail { flex-wrap: nowrap; gap: var(--s1); }
-  /* the name must stay readable — everything else gives ground first */
   .layer-row .layer-sound { width: 78px; }
-  .layer-row .vol-slider { width: 44px; }
+  /* the rail's spare width goes to volume, which is the one control here you
+     set by eye rather than by click */
+  .layer-row .vol-slider { min-width: 96px; }
+  /* explicit gap, so delete reads as the layer's own action and not as the
+     right-hand end of the slider it used to sit flush against */
+  .layer-row .layer-del { margin-left: var(--s3); }
   .layer-row .layer-grid {
     border-left: 1px solid var(--line-soft); padding-left: var(--s3);
     /* keeps every layer the same height even when its dials are small */
