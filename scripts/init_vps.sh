@@ -253,8 +253,17 @@ server {
 
     location /static/ {
         alias $STATIC_ROOT/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
+        # These are STABLE names — /static/poly/trainer/trainer.css is the same
+        # URL before and after a deploy. "immutable" is a promise that the file
+        # at a URL will never change, so it is only ever correct with
+        # content-hashed filenames; on stable names it told browsers not to
+        # revalidate even on reload, and paired with a 30-day expiry a deploy
+        # stayed invisible to anyone who had already loaded the site.
+        # "no-cache" still caches the file — it just requires a revalidation
+        # first, which nginx answers from the ETag it already sends with a
+        # cheap 304. Updates land on the next load; repeat loads stay free.
+        expires off;
+        add_header Cache-Control "public, no-cache";
     }
 
     location / {

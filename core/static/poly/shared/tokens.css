@@ -35,6 +35,18 @@
   --accent-lit: #cfe4ff;
   --ghost-lit: #cdd0ff;
 
+  /* --- per-app signature hue ---
+     The two apps share every layout decision on purpose, which is what makes
+     them feel like one product — but it also made them easy to confuse once
+     you were inside one. So each gets a hue of its own, and the hue is the
+     only thing that differs: the brand dot, the focus ring, the slider thumb,
+     the transport. The metronome keeps Poly's blue; the trainer is violet.
+     Each app's stylesheet redefines --accent to match, so every shared
+     control in components.css follows without knowing which app it is in. */
+  --app-metronome: #6ea8ff;
+  --app-trainer: #9b8cff;
+  --app: var(--app-metronome);
+
   /* --- status --- */
   --warn: #ffb86b;
   --danger: #ff6b81;
@@ -116,7 +128,9 @@ button:disabled { opacity: .38; cursor: not-allowed; }
    also the way back to the hub, so it is an <a> there and a <div> on the hub
    itself; both are styled here so the two never drift apart. */
 .brand { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
-.brand .logo { color: var(--accent); font-size: 18px; animation: pulse 2s ease-in-out infinite; }
+/* The dot is the smallest, most repeated piece of Poly, which makes it the
+   right place to carry which app you are in. */
+.brand .logo { color: var(--app); font-size: 18px; animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
 .brand-name { font-weight: 700; font-size: 18px; letter-spacing: .5px; }
 .brand-sub { color: var(--muted-2); font-size: 12px; }
