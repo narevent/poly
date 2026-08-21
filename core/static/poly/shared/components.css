@@ -1,0 +1,205 @@
+/* ============================================================
+   components.css — the controls both Poly apps are built from
+   Transport, buttons, form fields and the status bar. A control
+   lives here as soon as the second screen needs it, so the
+   metronome and the trainer cannot drift apart by accident.
+
+   Depends on shared/tokens.css for every value it uses.
+   ============================================================ */
+
+/* ---------- Shell ----------
+   Both apps are the same four-row page: top bar, a strip of controls, the
+   work surface, a status line. Only the middle row ever scrolls, so the
+   transport and the status stay put while a pattern is running. */
+.app-shell {
+  width: 100%;
+  max-width: 1080px;
+  height: 100dvh;
+  max-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding: calc(var(--sat) + var(--s3)) var(--s3) calc(var(--sab) + var(--s3));
+  gap: var(--s3);
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.transport { display: flex; align-items: center; gap: var(--s4); }
+.play-btn {
+  width: 54px; height: 54px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  color: var(--accent);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .2s ease, border-color .2s;
+  box-shadow: var(--shadow);
+  flex: 0 0 auto;
+}
+.play-btn:hover { border-color: var(--accent); }
+.play-btn:active { transform: scale(.94); }
+.play-btn.playing { border-color: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft), var(--shadow); }
+.play-btn .icon-stop { display: none; }
+.play-btn.playing .icon-play { display: none; }
+.play-btn.playing .icon-stop { display: block; color: var(--danger); }
+.play-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+.transport .tempo-readout {
+  font-family: var(--mono);
+  display: flex; align-items: baseline; gap: var(--s1);
+}
+.transport .tempo-readout #bpmReadout { font-size: 26px; font-weight: 700; }
+.transport .tempo-readout .unit { color: var(--muted-2); font-size: 12px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  min-height: var(--control-h);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  padding: 0 var(--s4);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, color .15s, transform .08s, filter .15s;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-primary.is-stop { background: var(--danger); color: #2a0710; }
+.btn-ghost { background: var(--bg-soft); border-color: var(--line); color: var(--text); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+.icon-btn {
+  width: 34px; height: 34px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent;
+  color: var(--muted); font-size: 15px; line-height: 1;
+  border-radius: var(--radius-xs); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.icon-btn:hover:not(:disabled) { color: var(--text); background: var(--card-2); border-color: var(--line); }
+.icon-btn.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Shared form controls ----------
+   Kept to single-class specificity on purpose: every component rule below
+   (.bpm-input, .stepper-input, …) must be able to override it. */
+.text-input, .field-input, select, textarea {
+  min-height: var(--control-h);
+  /* background-color, not the `background` shorthand: a .field-input select
+     out-specifies the bare `select` rule below, and the shorthand would reset
+     the chevron background-image it sets to none. */
+  background-color: var(--bg-soft);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-xs);
+  outline: 0;
+  transition: border-color .15s, background .15s;
+}
+.text-input { font-family: var(--sans); }
+.text-input:focus, .field-input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+::placeholder { color: var(--muted-2); }
+
+select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa3b7' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right var(--s3) center;
+  padding-right: var(--s6);
+  cursor: pointer;
+}
+
+.grow { flex: 1 1 auto; min-width: 0; }
+
+.field { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+.field-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .7px;
+  text-transform: uppercase; color: var(--muted-2);
+}
+
+.stepper { display: flex; align-items: stretch; gap: var(--s1); }
+.stepper-btn {
+  width: 34px; min-height: var(--control-h);
+  background: var(--bg-soft); border: 1px solid var(--line); color: var(--muted);
+  border-radius: var(--radius-xs); font-size: 16px; line-height: 1; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.stepper-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.stepper-input { width: 58px; text-align: center; padding-left: var(--s1); padding-right: var(--s1); }
+
+/* ---------- Status bar ---------- */
+.statusbar {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s3);
+  font-family: var(--mono); font-size: 11px; color: var(--muted-2);
+  padding: var(--s1) var(--s1) 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--s2);
+}
+.status-right { display: flex; gap: var(--s4); flex: 0 0 auto; }
+#statusPos { color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Range slider ----------
+   A thick track and an oversized thumb: these get dragged mid-take, often
+   on a phone, sometimes without looking. The ring around the thumb is what
+   keeps it legible where it crosses its own track. */
+.slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px; border-radius: 6px;
+  background: var(--line); outline: 0; cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); border: 4px solid var(--bg);
+  cursor: pointer; box-shadow: 0 0 0 1px var(--accent);
+}
+.slider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); border: 4px solid var(--bg); cursor: pointer;
+}
+
+/* ---------- Panel ----------
+   The raised surface every strip and card in Poly sits on. */
+.panel {
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Toggle switch ---------- */
+.sw {
+  width: 46px; height: 26px; flex: 0 0 auto; position: relative;
+  border-radius: 999px; cursor: pointer;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  transition: background .18s, border-color .18s;
+}
+.sw::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--muted-2); transition: transform .2s, background .18s;
+}
+.sw.on { background: var(--accent-soft); border-color: var(--accent); }
+.sw.on::after { transform: translateX(20px); background: var(--accent); }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 560px) {
+  .topbar { gap: var(--s3); }
+  .transport { gap: var(--s3); }
+  .play-btn { width: 44px; height: 44px; }
+  .play-btn svg { width: 20px; height: 20px; }
+  .transport .tempo-readout #bpmReadout { font-size: 20px; }
+  .transport .tempo-readout .unit { font-size: 10px; }
+  .statusbar { font-size: 10px; }
+}

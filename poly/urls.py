@@ -1,4 +1,4 @@
-"""Root URL configuration for the metronome project."""
+"""Root URL configuration for the Poly project."""
 from django.urls import include, path
 
 urlpatterns = [

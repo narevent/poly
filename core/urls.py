@@ -1,7 +1,9 @@
 from django.urls import path
 
-from .views import IndexView
+from .views import HubView, MetronomeView, TrainerView
 
 urlpatterns = [
-    path('', IndexView.as_view(), name='index'),
+    path('', HubView.as_view(), name='hub'),
+    path('metronome/', MetronomeView.as_view(), name='metronome'),
+    path('trainer/', TrainerView.as_view(), name='trainer'),
 ]

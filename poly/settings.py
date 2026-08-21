@@ -1,8 +1,8 @@
 """
-Django settings for the metronome project.
+Django settings for the Poly project.
 
 Deployment values (SECRET_KEY, DEBUG, ALLOWED_HOSTS, DOMAIN) are read from
-environment variables prefixed with METRONOME_ — these are written to
+environment variables prefixed with POLY_ — these are written to
 `.env` by scripts/init_vps.sh and loaded into the gunicorn unit via
 EnvironmentFile. Locally, sensible dev defaults apply when the vars are
 absent, so `python manage.py runserver` works out of the box.
@@ -27,20 +27,20 @@ def _env_bool(name: str, default: bool = False) -> bool:
 # back to a dev key and DEBUG=True so runserver is frictionless.
 
 SECRET_KEY = os.environ.get(
-    "METRONOME_SECRET_KEY",
+    "POLY_SECRET_KEY",
     "django-insecure-change-me-in-production-please",
 )
 
-DEBUG = _env_bool("METRONOME_DEBUG", default=True)
+DEBUG = _env_bool("POLY_DEBUG", default=True)
 
 ALLOWED_HOSTS = [
     h for h in (
-        os.environ.get("METRONOME_ALLOWED_HOSTS", "").split(",")
+        os.environ.get("POLY_ALLOWED_HOSTS", "").split(",")
     ) if h
 ] or ["localhost", "127.0.0.1", "0.0.0.0"]
 
 # Domain the site is served on (used for absolute URLs / CSRF_TRUSTED_ORIGINS).
-DOMAIN = os.environ.get("METRONOME_DOMAIN", "localhost")
+DOMAIN = os.environ.get("POLY_DOMAIN", "localhost")
 
 # When DEBUG is False, Django requires SECURE settings to be consistent with
 # the proxy. Allow the X-Forwarded-Proto header nginx sets so https is detected.
@@ -58,9 +58,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
 ]
 
-ROOT_URLCONF = 'metronome.urls'
+ROOT_URLCONF = 'poly.urls'
 
-WSGI_APPLICATION = 'metronome.wsgi.application'
+WSGI_APPLICATION = 'poly.wsgi.application'
 
 TEMPLATES = [
     {
