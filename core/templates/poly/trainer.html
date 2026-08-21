@@ -1,0 +1,167 @@
+{% extends 'poly/base.html' %}
+{% load static %}
+
+{% block title %}Poly — Trainer{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'poly/shared/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'poly/trainer/trainer.css' %}" />
+{% endblock %}
+
+{% block body %}
+  <div id="app" class="app-shell trainer-shell">
+
+    <header class="topbar">
+      <a class="brand" href="{% url 'hub' %}" title="Back to Poly">
+        <span class="logo">●</span>
+        <span class="brand-name">Poly</span>
+        <span class="brand-sub">trainer</span>
+      </a>
+      <div class="transport">
+        <button id="playBtn" class="play-btn" title="Start / Stop (Space)">
+          <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+        </button>
+        <div class="tempo-readout">
+          <span id="bpmReadout">90</span><span class="unit">bpm</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- The one strip of controls: what you are playing, and how fast. -->
+    <div class="ctrl-bar panel">
+      <div class="ratio">
+        <div class="ratio-cell">
+          <button type="button" class="ratio-step" data-step="a-1" aria-label="Fewer A beats">−</button>
+          <span class="ratio-val">
+            <b class="ratio-num ra" id="ratioA">3</b>
+            <span class="ratio-tag">A</span>
+          </span>
+          <button type="button" class="ratio-step" data-step="a+1" aria-label="More A beats">+</button>
+        </div>
+        <span class="rx">:</span>
+        <div class="ratio-cell">
+          <button type="button" class="ratio-step" data-step="b-1" aria-label="Fewer B beats">−</button>
+          <span class="ratio-val">
+            <b class="ratio-num rb" id="ratioB">4</b>
+            <span class="ratio-tag">B</span>
+          </span>
+          <button type="button" class="ratio-step" data-step="b+1" aria-label="More B beats">+</button>
+        </div>
+      </div>
+
+      <div class="tempo-slide">
+        <button type="button" class="bpm-step" id="bpmDown" aria-label="Slower">−</button>
+        <input type="range" class="slider" id="bpm" min="30" max="240" step="1" value="90" aria-label="Tempo" />
+        <button type="button" class="bpm-step" id="bpmUp" aria-label="Faster">+</button>
+      </div>
+
+      <button type="button" class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" class="gear"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <main id="main">
+      <div class="stage">
+        <canvas id="cv"></canvas>
+        <div class="countin" id="countin"><b id="countinN">3</b></div>
+        <div class="stage-foot">
+          <div class="legend">
+            <span class="leg-item"><i class="leg-sw sw-a"></i>Voice A</span>
+            <span class="leg-item"><i class="leg-sw sw-b"></i>Voice B</span>
+            <span class="leg-item"><i class="leg-sw sw-u"></i>Unison</span>
+          </div>
+          <div class="tol-note" id="tolNote">±50 ms</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat" id="stStreak"><span class="k">Streak</span><span class="v" id="sStreak">0</span></div>
+        <div class="stat"><span class="k">Best</span><span class="v" id="sBest">0</span></div>
+        <div class="stat"><span class="k">Accuracy</span><span class="v" id="sAcc">—</span></div>
+        <div class="stat"><span class="k">Timing</span><span class="v sm" id="sTiming">—</span></div>
+      </div>
+
+      <div class="pads">
+        <button type="button" class="pad pad-a" id="padA">
+          <span class="err" id="errA"></span>
+          <span class="pad-lbl">Voice A</span>
+          <span class="pad-cnt" id="padAN">3</span>
+          <span class="pad-key" id="keyA">F</span>
+          <span class="hist" id="histA"></span>
+          <span class="approach"><i id="apA"></i></span>
+        </button>
+        <button type="button" class="pad pad-b" id="padB">
+          <span class="err" id="errB"></span>
+          <span class="pad-lbl">Voice B</span>
+          <span class="pad-cnt" id="padBN">4</span>
+          <span class="pad-key" id="keyB">J</span>
+          <span class="hist" id="histB"></span>
+          <span class="approach"><i id="apB"></i></span>
+        </button>
+      </div>
+    </main>
+
+    <footer class="statusbar" id="statusBar">
+      <span id="statusPos">stopped</span>
+      <span class="status-right">
+        <span id="statusHint">F taps A · J taps B</span>
+        <span id="statusBpm">90 BPM</span>
+      </span>
+    </footer>
+  </div>
+
+  <!-- ---------- settings sheet ---------- -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="sheet" id="sheet" aria-label="Settings" aria-hidden="true">
+    <div class="grab"></div>
+    <button type="button" class="icon-btn sheet-close" id="closeBtn" aria-label="Close">
+      <svg viewBox="0 0 24 24" class="gear"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+
+    <h2 class="sheet-h">Exercise</h2>
+    <div class="presets" id="presets"></div>
+
+    <h2 class="sheet-h">Feel</h2>
+    <div class="field-row">
+      <div class="field grow">
+        <label class="field-label" for="tol">Tolerance <b id="tolV">±50 ms</b></label>
+        <input type="range" class="slider" id="tol" min="15" max="120" step="5" value="50" />
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field grow">
+        <label class="field-label" for="lat">Latency offset <b id="latV">0 ms</b></label>
+        <input type="range" class="slider" id="lat" min="-120" max="120" step="5" value="0" />
+        <p class="field-note" id="autoLat">device latency measured on start</p>
+      </div>
+    </div>
+
+    <h2 class="sheet-h">Voices</h2>
+    <div class="field-row">
+      <div class="field grow">
+        <label class="field-label" for="voiceA">Voice A</label>
+        <select class="field-input" id="voiceA"></select>
+      </div>
+      <div class="field grow">
+        <label class="field-label" for="voiceB">Voice B</label>
+        <select class="field-input" id="voiceB"></select>
+      </div>
+    </div>
+
+    <h2 class="sheet-h">Sound &amp; assist</h2>
+    <div class="toggles">
+      <div class="toggle" id="tgA"><span class="t-lbl">Click on voice A<em>Hear the A pulse</em></span><span class="sw on"></span></div>
+      <div class="toggle" id="tgB"><span class="t-lbl">Click on voice B<em>Hear the B pulse</em></span><span class="sw on"></span></div>
+      <div class="toggle" id="tgTap"><span class="t-lbl">Tap sound<em>A tick on your own taps</em></span><span class="sw on"></span></div>
+      <div class="toggle" id="tgCount"><span class="t-lbl">Count-in<em>One free cycle before scoring</em></span><span class="sw on"></span></div>
+      <div class="toggle" id="tgHap"><span class="t-lbl">Haptics<em>Vibrate on a miss (mobile)</em></span><span class="sw on"></span></div>
+    </div>
+
+    <h2 class="sheet-h">Progress</h2>
+    <button type="button" class="btn btn-ghost danger-btn" id="resetBtn">Reset streak &amp; best</button>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+{% endblock %}
+
+{% block scripts %}<script type="module" src="{% static 'poly/trainer/js/trainer.js' %}"></script>{% endblock %}

@@ -68,7 +68,7 @@ require_repo_url() {
 # --- Django layout (this repo) ---------------------------------------------
 # The Django project package — where settings.py and wsgi.py live. This is a
 # property of the CODE, not of the deployment, so it does not follow $PROJECT.
-: "${DJANGO_PKG:=metronome}"
+: "${DJANGO_PKG:=poly}"
 : "${DJANGO_WSGI:=$DJANGO_PKG.wsgi:application}"
 
 # manage.py, requirements.txt and STATIC_ROOT all sit at the repo root.
@@ -77,9 +77,9 @@ require_repo_url() {
 : "${STATIC_ROOT:=$APP_ROOT/staticfiles}"
 : "${LOG_DIR:=$APP_ROOT/logs}"
 
-# The env-var prefix settings.py reads. Fixed by the code (METRONOME_SECRET_KEY
-# etc. in metronome/settings.py) — it does not rename itself with $PROJECT.
-: "${ENV_PREFIX:=METRONOME}"
+# The env-var prefix settings.py reads. Fixed by the code (POLY_SECRET_KEY
+# etc. in poly/settings.py) — it does not rename itself with $PROJECT.
+: "${ENV_PREFIX:=POLY}"
 
 # --- App runtime ------------------------------------------------------------
 # $PORT comes from project.sh: an explicit env var, the value init_vps.sh pinned

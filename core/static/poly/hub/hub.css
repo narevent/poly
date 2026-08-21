@@ -1,0 +1,150 @@
+/* ============================================================
+   hub.css — the Poly launcher
+   One screen, one job: pick an app. Everything here is either the
+   wordmark, the two cards, or the space around them.
+   ============================================================ */
+
+.hub {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: calc(var(--sat) + var(--s6)) var(--s4) calc(var(--sab) + var(--s5));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+  align-items: center;
+}
+
+/* ---------- Head ---------- */
+.hub-head { text-align: center; display: flex; flex-direction: column; gap: var(--s2); align-items: center; }
+/* The wordmark is the one place Poly gets to be big. */
+.hub-brand .logo { font-size: 30px; }
+.hub-brand .brand-name { font-size: 34px; letter-spacing: 1px; }
+.hub-tagline { color: var(--muted); font-size: 14px; letter-spacing: .2px; }
+
+/* ---------- Cards ----------
+   Two equal columns on desktop, stacked on phones. Nothing else is ever
+   added to this row: a third app gets its own column and the grid
+   re-divides on its own. */
+.hub-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s4);
+}
+
+.app-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  padding: var(--s5) var(--s4) var(--s4);
+  background: linear-gradient(180deg, var(--card), var(--bg-soft));
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition: border-color .2s, transform .12s ease, box-shadow .2s;
+}
+/* A pool of accent light bleeding up from behind the card on hover — the
+   same brand glow the app backgrounds use, so the hover reads as "this is
+   the thing that lights up". */
+.app-card::after {
+  content: '';
+  position: absolute; inset: -40% -10% auto;
+  height: 120%;
+  background: radial-gradient(50% 50% at 50% 50%, var(--accent-soft), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.app-card:hover, .app-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
+.app-card:hover::after, .app-card:focus-visible::after { opacity: 1; }
+.app-card:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
+
+.card-text { display: flex; flex-direction: column; gap: var(--s2); }
+.card-text h2 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+.card-text p { color: var(--muted); font-size: 13px; line-height: 1.55; max-width: 34ch; }
+
+.card-go {
+  position: absolute; top: var(--s4); right: var(--s4);
+  color: var(--muted-2); font-size: 18px; line-height: 1;
+  transition: color .2s, transform .2s;
+}
+.app-card:hover .card-go, .app-card:focus-visible .card-go { color: var(--accent); transform: translateX(3px); }
+
+/* ---------- Card artwork ----------
+   Both marks are the real thing at small scale: same colours, same
+   geometry, same rhythm the app runs. They keep animating because a
+   still frame of either would read as a screenshot, not a rhythm. */
+.card-art {
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--s3);
+}
+.card-art svg { display: block; width: 100%; height: auto; }
+
+/* --- metronome: 4 : 3 : 5 layers --- */
+.mm-dots circle { fill: var(--accent); opacity: .28; }
+.lane-b .mm-dots circle { fill: var(--ghost); }
+.lane-c .mm-dots circle { fill: var(--good); }
+
+.mm-head { fill: none; stroke: var(--accent); stroke-width: 2; }
+.lane-b .mm-head { stroke: var(--ghost); }
+.lane-c .mm-head { stroke: var(--good); }
+
+/* One shared cycle, stepped into 4, 3 and 5 — so the three lanes line up
+   only on the downbeat, exactly as they do in the app. */
+.mm-head { animation-duration: 2.4s; animation-iteration-count: infinite; }
+.n4 { animation-name: mm4; animation-timing-function: steps(4, end); }
+.n3 { animation-name: mm3; animation-timing-function: steps(3, end); }
+.n5 { animation-name: mm5; animation-timing-function: steps(5, end); }
+@keyframes mm4 { from { transform: translateX(0) } to { transform: translateX(160px) } }
+@keyframes mm3 { from { transform: translateX(0) } to { transform: translateX(180px) } }
+@keyframes mm5 { from { transform: translateX(0) } to { transform: translateX(150px) } }
+
+/* --- trainer: 3 against 4, flowing to the playhead --- */
+/* the same two voice colours the trainer itself uses */
+.pt-a circle { fill: var(--accent); }
+.pt-b circle { fill: #9b8cff; }
+.pt-band { fill: rgba(255, 255, 255, .04); }
+.pt-head { stroke: var(--text); stroke-width: 1.5; opacity: .75; }
+/* One cycle is 96 units wide; the note rows repeat every 96, so sliding by
+   exactly that and looping is seamless. */
+.pt-flow { animation: ptFlow 2.4s linear infinite; }
+@keyframes ptFlow { from { transform: translateX(0) } to { transform: translateX(-96px) } }
+
+/* ---------- Foot ---------- */
+.hub-foot { color: var(--muted-2); font-size: 11.5px; letter-spacing: .2px; }
+.hub-foot kbd {
+  font-family: var(--mono); font-size: 10.5px;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  border-radius: 5px; padding: 2px 6px; margin: 0 1px;
+  color: var(--muted);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 560px) {
+  .hub { gap: var(--s5); padding-top: calc(var(--sat) + var(--s5)); }
+  .hub-brand .logo { font-size: 24px; }
+  .hub-brand .brand-name { font-size: 27px; }
+  .hub-tagline { font-size: 13px; }
+  .app-card { padding: var(--s4) var(--s3) var(--s3); gap: var(--s3); }
+  .card-text h2 { font-size: 18px; }
+  .card-text p { font-size: 12.5px; }
+  /* on a phone the two cards must both be visible without scrolling, so the
+     artwork gives up the height rather than the words. The mark keeps its
+     16:9 proportions and simply centres in the shorter frame. */
+  .card-art { padding: var(--s2); }
+  .card-art svg { max-height: 104px; margin: 0 auto; }
+  /* physical keyboards are the exception on touch; the hint is noise there */
+  .hub-foot { display: none; }
+}
+
+/* the mark is the affordance on touch — there is no hover to reveal */
+@media (hover: none) {
+  .card-go { color: var(--accent); }
+}

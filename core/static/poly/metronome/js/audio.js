@@ -41,7 +41,7 @@
                   played back to back on the audio clock.
    ============================================================ */
 
-import { playVoice, DEFAULT_VOICE } from './voices.js';
+import { playVoice, DEFAULT_VOICE } from '../../shared/voices.js';
 
 const A = (typeof AudioContext !== 'undefined') ? AudioContext
         : (typeof webkitAudioContext !== 'undefined') ? webkitAudioContext : null;

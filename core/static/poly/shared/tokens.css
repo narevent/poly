@@ -1,0 +1,142 @@
+/* ============================================================
+   tokens.css — the Poly design system
+   Every surface in Poly (hub, metronome, trainer) pulls its
+   colour, type, spacing and radius from here, so the three
+   screens read as one app rather than three that share a menu.
+
+   Only add a token here when a SECOND screen needs it; anything
+   used by one app belongs in that app's own stylesheet.
+   ============================================================ */
+
+:root {
+  /* --- surfaces, darkest to lightest --- */
+  --bg: #0d0f14;
+  --bg-soft: #13161d;
+  --card: #171a23;
+  --card-2: #1c2029;
+  --line: #2b3140;
+  --line-soft: #222732;
+
+  /* --- ink --- */
+  --text: #e7ecf3;
+  --muted: #9aa3b7;
+  --muted-2: #6b7385;
+
+  /* --- brand --- */
+  --accent: #6ea8ff;
+  --accent-2: #4f8cff;
+  --accent-ink: #06121f;
+  --accent-soft: rgba(110, 168, 255, .16);
+  --ghost: #7c84ff;
+  /* "lit" variants — the colour an element takes while it is sounding.
+     Declared as real colours rather than produced with filter: brightness(),
+     because WebKit applies CSS filters to SVG child elements unreliably: on
+     iOS the highlight simply did not appear, while it worked on desktop. */
+  --accent-lit: #cfe4ff;
+  --ghost-lit: #cdd0ff;
+
+  /* --- status --- */
+  --warn: #ffb86b;
+  --danger: #ff6b81;
+  --danger-soft: rgba(255, 107, 129, .14);
+  --good: #5fe3a1;
+
+  /* --- spacing scale --- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 22px;
+  --s6: 30px;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+  --control-h: 40px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, .25);
+
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Sora', system-ui, -apple-system, sans-serif;
+
+  /* iOS notch / home indicator */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+/* The Poly ground: two brand-coloured pools, one per corner. Every screen
+   sits on it, which is most of what makes them feel like one app. */
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(110, 168, 255, .10), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(124, 132, 255, .08), transparent 60%),
+    var(--bg);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* keyboard focus is always visible, mouse focus never is */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+button, input, select { font-family: inherit; }
+button:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ---------- Brand lockup ----------
+   `● Poly / <app>` — the same mark on all three screens. Inside an app it is
+   also the way back to the hub, so it is an <a> there and a <div> on the hub
+   itself; both are styled here so the two never drift apart. */
+.brand { display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.brand .logo { color: var(--accent); font-size: 18px; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+.brand-name { font-weight: 700; font-size: 18px; letter-spacing: .5px; }
+.brand-sub { color: var(--muted-2); font-size: 12px; }
+
+/* The link form gets a back-chevron that slides out on hover — an explicit
+   "this goes somewhere" cue, since a wordmark alone does not read as a
+   control. The chevron occupies its width at all times so nothing shifts. */
+a.brand {
+  text-decoration: none;
+  color: inherit;
+  padding: var(--s1) var(--s2);
+  margin-left: calc(var(--s2) * -1);
+  border-radius: var(--radius-sm);
+  transition: background .15s;
+}
+a.brand::before {
+  content: '‹';
+  color: var(--muted-2);
+  font-size: 20px;
+  line-height: 1;
+  transform: translateX(3px);
+  transition: transform .15s, color .15s;
+}
+a.brand:hover { background: var(--bg-soft); }
+a.brand:hover::before { color: var(--accent); transform: translateX(0); }
+a.brand:hover .brand-sub { color: var(--muted); }
+
+@media (max-width: 560px) {
+  .brand .logo, .brand-name { font-size: 15px; }
+  .brand-sub { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

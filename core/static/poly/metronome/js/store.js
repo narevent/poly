@@ -5,7 +5,7 @@
    beat's subdivision (so every step can have its own subdiv).
    ============================================================ */
 
-import { DEFAULT_VOICE, isVoice } from './voices.js';
+import { DEFAULT_VOICE, isVoice } from '../../shared/voices.js';
 
 const KEY = 'poly-metronome-v2';
 

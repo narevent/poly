@@ -171,7 +171,7 @@ as_user "$VENV/bin/pip install --upgrade pip wheel"
 as_user "$VENV/bin/pip install -r $REQUIREMENTS gunicorn"
 
 # --- 6. Secret key + env file ----------------------------------------------
-# Keys are read by metronome/settings.py, which looks for METRONOME_* (or
+# Keys are read by poly/settings.py, which looks for POLY_* (or
 # whatever ENV_PREFIX is) regardless of the project name — see config.sh.
 ENV_FILE="$APP_ROOT/.env"
 # Regenerate when missing OR when it predates a prefix change (e.g. an old

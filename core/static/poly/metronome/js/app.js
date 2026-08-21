@@ -7,7 +7,7 @@ import { MetronomeEngine } from './audio.js';
 import {
   load, save, makeLayer, uid, setBeatSubdiv, addBeat, removeBeat, LAYER_COLOR_OPTIONS,
 } from './store.js';
-import { VOICES, DEFAULT_VOICE } from './voices.js';
+import { VOICES, DEFAULT_VOICE } from '../../shared/voices.js';
 
 const ART_CYCLE = ['accent', 'normal', 'ghost', 'silent'];
 /* Every subdivision the beat menu offers is reachable by tapping the hub too —
@@ -257,7 +257,7 @@ function renderMain(host) {
 
   const slide = el('div', 'tempo-slide');
   slide.appendChild(btn('bpm-step', '−', 'Slower (hold Shift for 10)', e => nudgeBpm(e.shiftKey ? -10 : -1)));
-  const slider = el('input', 'bpm-slider');
+  const slider = el('input', 'slider bpm-slider');
   slider.type = 'range'; slider.min = 20; slider.max = 280; slider.step = 1;
   slider.value = clamp(app.state.bpm, 20, 280);
   slider.setAttribute('aria-label', 'Tempo slider');
