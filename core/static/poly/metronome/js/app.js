@@ -340,6 +340,11 @@ function registerTap(store) {
   return clamp(Math.round(60000 / avg), 20, 400);
 }
 
+/* A layer's name is derived, never typed. The only thing about a layer worth
+   naming is how long its bar is, and that is already the one number the track
+   below it is drawing — so it names itself and the rail gets its width back. */
+const layerLabel = l => `${(l.beatPattern || []).length}/4`;
+
 function renderLayerRow(layer, idx) {
   const row = el('section', 'layer-row');
   row.dataset.id = layer.id;
@@ -352,7 +357,7 @@ function renderLayerRow(layer, idx) {
   const enWrap = el('label', 'layer-toggle');
   const en = el('input', 'layer-enable');
   en.type = 'checkbox'; en.checked = layer.enabled;
-  en.setAttribute('aria-label', `Enable ${layer.name}`);
+  en.setAttribute('aria-label', `Enable layer ${layerLabel(layer)}`);
   en.addEventListener('change', () => {
     layer.enabled = en.checked;
     row.classList.toggle('disabled', !layer.enabled);
@@ -375,12 +380,9 @@ function renderLayerRow(layer, idx) {
   dot.style.background = layer.color;
   rail.appendChild(dot);
 
-  const nameInput = el('input', 'layer-name');
-  nameInput.value = layer.name;
-  nameInput.title = 'Layer name';
-  nameInput.setAttribute('aria-label', 'Layer name');
-  nameInput.addEventListener('input', () => { layer.name = nameInput.value; persist(); });
-  rail.appendChild(nameInput);
+  const name = el('span', 'layer-name', layerLabel(layer));
+  name.title = 'Bar length — add or remove beats on the track to change it';
+  rail.appendChild(name);
 
   /* Compact, unlabelled controls: the pattern is the thing worth looking at,
      so these stay quiet. Beats are added and removed on the track itself.
@@ -390,7 +392,7 @@ function renderLayerRow(layer, idx) {
   const ctrls = el('div', 'layer-controls');
 
   const sound = el('select', 'layer-sound');
-  sound.setAttribute('aria-label', `Sound for ${layer.name}`);
+  sound.setAttribute('aria-label', `Sound for layer ${layerLabel(layer)}`);
   VOICES.forEach(v => {
     const o = el('option', '', v.name);
     o.value = v.id;
@@ -409,20 +411,6 @@ function renderLayerRow(layer, idx) {
     persist(); buildEngineLayers();
   });
   ctrls.appendChild(sound);
-
-  const bpmInput = el('input', 'layer-bpm');
-  bpmInput.type = 'number'; bpmInput.min = 0; bpmInput.max = 999; bpmInput.step = 'any';
-  bpmInput.placeholder = 'bpm';
-  bpmInput.value = layer.bpm != null ? layer.bpm : '';
-  bpmInput.title = 'Layer BPM — leave empty to follow the global tempo';
-  bpmInput.setAttribute('aria-label', 'Layer BPM');
-  bpmInput.addEventListener('change', () => {
-    const raw = bpmInput.value.trim();
-    layer.bpm = raw === '' ? null : clamp(parseFloat(raw) || 0, 0, 999);
-    if (layer.bpm != null) bpmInput.value = layer.bpm;
-    persist(); buildEngineLayers();
-  });
-  ctrls.appendChild(bpmInput);
 
   const volInput = el('input', 'vol-slider');
   volInput.type = 'range'; volInput.min = 0; volInput.max = 1; volInput.step = 0.05;
@@ -585,6 +573,9 @@ function renderPiesOnly() {
     layer.beatPattern.forEach((_, beatIdx) => grid.appendChild(renderBeatPie(layer, beatIdx)));
     grid.appendChild(makeAddBeatBtn(layer));
     grid.scrollLeft = scroll;
+    // the name IS the bar length, so it has to follow a beat being added
+    const nm = host.querySelector(`.layer-row[data-id="${layer.id}"] .layer-name`);
+    if (nm) nm.textContent = layerLabel(layer);
   });
 }
 
@@ -645,7 +636,7 @@ function showBeatMenu(layer, beatIdx, ev) {
   const m = el('div', 'beat-menu');
 
   const title = el('div', 'bm-title');
-  title.appendChild(el('span', '', `${layer.name} · beat ${beatIdx + 1}`));
+  title.appendChild(el('span', '', `${layerLabel(layer)} · beat ${beatIdx + 1}`));
   title.appendChild(btn('bm-close', '×', 'Close', closeBeatMenu));
   m.appendChild(title);
 

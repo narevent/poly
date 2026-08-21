@@ -180,28 +180,16 @@
   transition: transform .12s;
 }
 .layer-color-dot:hover { transform: scale(1.2); }
+/* Derived from the bar length, so it is a label and not a field. Mono,
+   because it reads as a time signature and the digits should not shift. */
 .layer-name {
-  /* a real min-width, so a crowded rail wraps rather than squeezing the
-     name down to nothing */
-  flex: 1 1 84px; min-width: 96px; height: 30px;
-  background: transparent; border: 0; border-bottom: 1px solid transparent;
-  outline: 0; padding: 0 var(--s1); border-radius: 0; min-height: 0;
-  font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--text);
-  transition: border-color .15s;
+  flex: 0 0 auto; height: 30px; display: flex; align-items: center;
+  padding: 0 var(--s1);
+  font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text);
+  white-space: nowrap;
 }
-.layer-name:hover { border-bottom-color: var(--line); }
-.layer-name:focus { border-bottom-color: var(--accent); }
 
-.layer-bpm {
-  width: 48px; height: 30px; min-height: 0; flex: 0 0 auto;
-  background: transparent; border: 1px solid var(--line-soft); color: var(--muted);
-  font-family: var(--mono); font-size: 11px; text-align: center;
-  padding: 0 var(--s1); border-radius: var(--radius-xs); outline: 0;
-  transition: border-color .15s, color .15s;
-}
-.layer-bpm:hover { color: var(--text); }
-.layer-bpm:focus { border-color: var(--accent); color: var(--text); }
-/* Sound · BPM · volume group. `display: contents` makes the wrapper vanish
+/* Sound · volume group. `display: contents` makes the wrapper vanish
    from layout, so on wide screens these sit directly in the rail exactly as
    if they were not wrapped at all. Phones re-materialise it as its own row. */
 .layer-controls { display: contents; }
@@ -222,7 +210,19 @@
 .layer-sound:focus { border-color: var(--accent); color: var(--text); }
 .layer-sound option { background: var(--bg-soft); color: var(--text); }
 
-.layer-del { width: 28px; height: 28px; font-size: 14px; }
+/* Sat immediately after the volume slider at 28px, which made it read as part
+   of the slider rather than as the layer's own destructive action. Now it is a
+   full-size target, carries a border so it reads as a button, and auto-margin
+   parks it at the far end of the rail with clear space in between. */
+.layer-del {
+  width: 34px; height: 34px; font-size: 17px; flex: 0 0 auto;
+  margin-left: auto;
+  border-color: var(--line-soft);
+  color: var(--muted);
+}
+.layer-del:hover:not(:disabled) {
+  color: var(--danger); border-color: var(--danger); background: var(--danger-soft);
+}
 .vol-slider {
   -webkit-appearance: none; appearance: none;
   width: 52px; flex: 0 0 auto; height: 4px; border-radius: 4px;
@@ -642,7 +642,7 @@
      The auto margin on delete eats the leftover space on the first line,
      which is what forces the break at exactly that point. */
   .layer-rail { flex-wrap: wrap; row-gap: var(--s1); }
-  .layer-del { order: 4; margin-left: auto; }
+  .layer-del { order: 4; }
   .layer-controls {
     order: 5; display: flex; align-items: center;
     flex: 1 1 100%; gap: var(--s2); min-width: 0;
@@ -658,7 +658,15 @@
   .part-repeat .stepper-input { width: 44px; }
 }
 
-@media (min-width: 720px) {
+/* Width alone is the wrong gate for the pinned layout below. A phone in
+   landscape is 812px WIDE and 375px TALL: it was taking the desktop layout,
+   whose minmax(0, 1fr) then collapsed the layer list to 2px inside an
+   overflow:hidden main — the layers were still in the DOM, squeezed to
+   nothing, with no way to scroll to them. Pinning the tempo strip only pays
+   off when there is height left over for a usable list underneath it, so it
+   now takes height as well as width; anything shorter falls back to #main
+   scrolling the whole view, which is what landscape needs. */
+@media (min-width: 720px) and (min-height: 600px) {
   #app { padding: calc(var(--sat) + var(--s5)) var(--s5) calc(var(--sab) + var(--s5)); gap: var(--s4); }
   .view-presets, .view-song { gap: var(--s5); }
 
@@ -698,7 +706,6 @@
   .layer-row .layer-rail { flex-wrap: nowrap; gap: var(--s1); }
   /* the name must stay readable — everything else gives ground first */
   .layer-row .layer-sound { width: 78px; }
-  .layer-row .layer-name { min-width: 76px; }
   .layer-row .vol-slider { width: 44px; }
   .layer-row .layer-grid {
     border-left: 1px solid var(--line-soft); padding-left: var(--s3);
