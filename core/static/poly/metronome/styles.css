@@ -263,21 +263,29 @@
    edit OR undo. A bar you can get into and not out of is the real bug.
 
    So the dials now have a floor and the track WRAPS instead. auto-fit with a
-   minmax floor keeps every dial at least --dial-min wide, lets a short bar
-   grow into the full width as before, and folds a long one onto a second row —
+   minmax floor keeps every dial at least 48px wide (44px on a phone), lets a
+   short bar grow into the full width as before, folds a long one onto a row —
    into the vertical space this view has going spare anyway. Every beat stays
    visible and every beat stays hittable, at any count. */
 .layer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--dial-min, 48px), 1fr));
+  /* A literal, not minmax(var(--x), 1fr). A custom property inside minmax()
+     inside repeat() is the most fragile thing in this file: if a browser fails
+     to compute it, the declaration falls back to `unset` — which for
+     grid-template-columns is `none` — and every dial drops into one implicit
+     column. The phone override below restates the whole value rather than
+     swapping a variable inside it. */
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
   gap: var(--s1);
   align-items: center;
   min-width: 0;
+  /* Nothing here may paint over the controls below it. The dials and their
+     ring are bounded inside their own box, so this only ever clips a fault. */
+  overflow: hidden;
 }
 .beat-pie {
-  min-width: 0;
+  width: 100%; min-width: 0;
   display: flex; justify-content: center;
-  container-type: inline-size;
 }
 .beat-dial {
   position: relative;
@@ -379,9 +387,11 @@
 }
 .beat-pie:hover .beat-rm, .beat-rm:focus-visible { opacity: 1; }
 .beat-rm:hover { color: var(--danger); border-color: var(--danger); }
-/* one more cell in the track, so it wraps along with the dials */
+/* one more cell in the track, so it wraps along with the dials. Definite
+   height, not align-self: stretch — a stretched cell takes the whole row's
+   height, and a wrapped row can be far taller than a dial. */
 .beat-add {
-  align-self: stretch; min-height: 44px;
+  align-self: center; width: 100%; height: 44px; min-height: 0;
   border-radius: var(--radius-xs);
   background: transparent; border: 1.5px dashed var(--line); color: var(--muted);
   font-size: 20px; font-weight: 300; cursor: pointer;
@@ -398,13 +408,10 @@
 }
 .bm-rm:hover { border-color: var(--danger); background: rgba(255, 107, 129, .2); }
 
-/* A last-ditch guard for a slot somehow narrower than the floor above. It no
-   longer fires in normal use — --dial-min keeps every slot at 48px — and it
-   deliberately no longer hides .beat-rm: removing a beat has to stay reachable
-   at every size, because it is the only way back out of a bar with too many. */
-@container (max-width: 40px) {
-  .beat-num { display: none; }
-}
+/* The container query that used to hide these is gone along with the
+   container-type it needed: no slot can be narrower than 44px any more, so it
+   could never fire, and `container-type` on a grid item carries containment
+   that is not worth keeping for a rule that does nothing. */
 
 /* ---------- Beat popup menu ---------- */
 .beat-menu {
@@ -597,7 +604,7 @@
   .beat-add { font-size: 17px; }
   /* a phone track is narrow, so the floor comes down to the smallest dial that
      is still a real touch target — below this it wraps rather than shrinks */
-  .layer-grid { gap: 2px; --dial-min: 44px; }
+  .layer-grid { gap: 2px; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
 
   /* The beat menu becomes a bottom sheet: a 264px popover pinned to a finger
      lands half off-screen and under the hand that opened it. */
