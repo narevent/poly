@@ -397,11 +397,21 @@ export class MetronomeEngine {
     else this._loop();
   }
 
+  /* The fallback clock. The re-arm is in a `finally` because it is a chain:
+     one throw between the schedule call and the next setTimeout would end
+     playback for the rest of the page's life, with nothing to restart it.
+     The worklet path does not need this — each port message is its own
+     task, so a throw costs one tick and no more. */
   _loop() {
     if (!this.running || this._clock) return;
-    this._schedule();
-    if (this.running && !this._clock) {
-      this._timer = setTimeout(() => this._loop(), this._tick * 1000);
+    try {
+      this._schedule();
+    } catch (e) {
+      console.warn('scheduler tick failed', e);
+    } finally {
+      if (this.running && !this._clock) {
+        this._timer = setTimeout(() => this._loop(), this._tick * 1000);
+      }
     }
   }
 

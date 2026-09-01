@@ -11,7 +11,6 @@
 
 import { playVoice, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
 import { createContext, attach, ping } from '../../shared/audio-session.js';
-import * as haptics from '../../shared/haptics.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
@@ -36,11 +35,10 @@ const MONO = "'JetBrains Mono', ui-monospace, monospace";
 /* ---------------- state ---------------- */
 let A = 3, B = 4, bpm = 90, tolMs = 50, latMs = 0;
 let voice = { A: 'click', B: 'beep' };
-/* `hap` is gone from here: haptics are one setting for the whole of Poly,
-   switched on in the hub and read from shared/haptics.js, so turning it on
-   before you pick an app is enough. A stored `hap` from before that change
-   is ignored rather than migrated — the shared setting is opt-in, and
-   silently switching on a phone's motor is not a migration. */
+/* `hap` is gone: vibration is not a thing most of these devices can
+   actually do — iOS has no navigator.vibrate at all — so the setting was
+   promising something that would not happen. A stored `hap` from before is
+   dropped on the next save rather than migrated anywhere. */
 let sound = { A: true, B: true, tap: true, count: true };
 
 let playing = false, startTime = 0, cycleSec = 0;
@@ -163,7 +161,13 @@ function load() {
   } catch (e) { console.warn('load failed', e); }
 }
 
-/* ---------------- timing / events ---------------- */
+/* ---------------- timing / events ----------------
+   A hard ceiling on the event window. Nothing should ever reach it —
+   pruneEvents keeps the list to a few seconds — but it is what stops a
+   bug in the windowing from turning into unbounded growth again, which is
+   what the audio dying on a phone turned out to be. */
+const EVENT_CEILING = 512;
+
 function intervalOf(v) { return cycleSec / (v === 'A' ? A : B); }
 function computeCycle() { cycleSec = A * (60 / bpm); }
 
@@ -179,25 +183,54 @@ function genCycleEvents(c) {
 }
 function ensureEvents(untilRel) {
   while (genCycle * cycleSec < untilRel + cycleSec * 2) {
-    events = events.concat(genCycleEvents(genCycle++));
+    for (const e of genCycleEvents(genCycle++)) events.push(e);
+    if (events.length > EVENT_CEILING) events.splice(0, events.length - EVENT_CEILING);
   }
 }
-let lastPrune = 0;
+
+/* The list is a sliding window, not a log: a few seconds behind the
+   playhead so a late tap can still find its note, and a couple of cycles
+   ahead so the scheduler and the canvas have something to work with.
+
+   This used to be rate limited with `if (rel - lastPrune < 2) return;`
+   against a module-level `lastPrune` that start() never reset. Restarting
+   — the stop/start button, or any tempo or ratio change, which restarts
+   through restartKeepingScore() — sends `rel` back to zero while
+   `lastPrune` still holds the last run's, so the guard stayed true and
+   NOTHING WAS EVER PRUNED again until the new run outlasted the old one.
+   `events` then grew without bound, and four separate loops walk it: the
+   missed-note scan every frame, the connectors and the notes in draw()
+   every frame, and the scheduler at 40 Hz. Cost climbed linearly with
+   time — the phone got hot — and once one scheduler pass took longer than
+   its own 0.3 s look-ahead every note was stamped `sched` and then
+   dropped for being late. Silence, with the animation still running
+   perfectly, curable only by a reload. Exactly the reported fault.
+
+   So there is no rate limit and no cross-run state now. The array is
+   built by appending whole cycles in order, so it is sorted by `t` and
+   the stale head can be shifted off directly — cheaper than the filter
+   this replaces, which allocated a new array every time it ran. */
 function pruneEvents(rel) {
-  if (rel - lastPrune < 2) return;   // keep the list a few seconds long, always
-  lastPrune = rel;
-  events = events.filter(e => e.t > rel - 3);
+  const cut = rel - 3;
+  let n = 0;
+  while (n < events.length && events[n].t <= cut) n++;
+  if (n) events.splice(0, n);
 }
 
 /* ---------------- transport ---------------- */
 let schedTimer = null, rafId = null, leadSec = 0;
+/* How late a note may be before playing it would be worse than not. A
+   flam is better than a hole, up to a point; past this it is neither.
+   `lateDrops` is a symptom counter — see the __poly handle. */
+const LATE_GRACE = 0.045;
+let lateDrops = 0;
 
 function start() {
   if (!ensureAudio()) return;
   if (playing) return;
   playing = true;
   computeCycle();
-  events = []; genCycle = 0; floats = [];
+  events = []; genCycle = 0; floats = []; lateDrops = 0;
   evaluated = 0; goodCount = 0; errSum = 0; errN = 0;
   hist = { A: [], B: [] }; renderHist();
   lastBeat = { A: -1, B: -1 };
@@ -235,12 +268,11 @@ function restartKeepingScore() {
 
 function stop(quiet) {
   playing = false;
-  haptics.cancel();
   clearTimeout(schedTimer);
   cancelAnimationFrame(rafId);
   $('playBtn').classList.remove('playing');
   $('countin').classList.remove('on');
-  $('apA').style.width = '0%'; $('apB').style.width = '0%';
+  $('apA').style.transform = 'scaleX(0)'; $('apB').style.transform = 'scaleX(0)';
   ['A', 'B'].forEach(v => {
     const pad = $('pad' + v);
     flashTok.set(pad, (flashTok.get(pad) || 0) + 1);   // void any pending flash
@@ -250,20 +282,38 @@ function stop(quiet) {
   if (!quiet) { draw(-999); updateStatus(); }
 }
 
+/* The audio scheduler. It runs on its own timer, independent of the
+   animation loop, which is why it used to be able to die on its own and
+   leave the visuals running: one throw in here ended the setTimeout chain
+   for the rest of the page's life. It cannot now — the re-arm is in a
+   `finally`, and loop() watches the heartbeat and restarts it if it ever
+   does stop. */
+let lastSched = 0;
 function scheduleTick() {
-  if (!playing || !actx) return;
-  syncClock();
-  const now = actx.currentTime, rel = now - startTime;
-  ensureEvents(rel);
-  for (const e of events) {
-    if (e.sched) continue;
-    const at = startTime + e.t;
-    if (at < now + 0.3) {
-      e.sched = true;
-      if (at >= now - 0.02) voiceClick(Math.max(at, now), e.v, e.coin);
+  if (!playing || !actx) { schedTimer = null; return; }
+  lastSched = performance.now();
+  try {
+    if (actx.state !== 'running') ping(actx);
+    syncClock();
+    const now = actx.currentTime, rel = now - startTime;
+    pruneEvents(rel);      // here as well as in loop(), so the window can
+    ensureEvents(rel);     // never depend on rAF being awake to stay bounded
+    for (const e of events) {
+      if (e.sched) continue;
+      const at = startTime + e.t;
+      if (at < now + 0.3) {
+        e.sched = true;
+        if (at >= now - LATE_GRACE) voiceClick(Math.max(at, now), e.v, e.coin);
+        else lateDrops++;
+      }
     }
+  } catch (err) {
+    // one bad hit is a missed note, not the end of the exercise
+    console.warn('scheduler tick failed', err);
+  } finally {
+    if (playing) schedTimer = setTimeout(scheduleTick, 25);
+    else schedTimer = null;
   }
-  schedTimer = setTimeout(scheduleTick, 25);
 }
 
 function togglePlay() { if (playing) stop(); else start(); }
@@ -313,7 +363,6 @@ function registerGrade(v, grade, errMs, ghost) {
   } else if (grade === 'bad') {
     if (streak >= 8) toast('Streak broken at ' + streak, 'bad');
     streak = 0;
-    haptics.pulse('miss');
   }
   pulsePad(v, grade, errMs, ghost);
   updateStats();
@@ -437,9 +486,35 @@ if (window.ResizeObserver) {
   }).observe(cv);
 }
 
+/* Nodes touched on every single frame, looked up once. getElementById is
+   cheap, but it is not free sixty times a second times five. */
+const EL = {
+  padA: $('padA'), padB: $('padB'),
+  apA: $('apA'), apB: $('apB'),
+  countin: $('countin'), countinN: $('countinN'),
+  statusPos: $('statusPos'),
+};
+let shownStatus = '';
+function setStatusPos(txt) {
+  if (txt === shownStatus) return;   // a DOM write a frame, for text that
+  shownStatus = txt;                 // changes once a cycle
+  EL.statusPos.textContent = txt;
+}
+
 function loop() {
   if (!playing || !actx) return;
   const rel = relNow();
+
+  /* Heartbeat. The scheduler is a separate setTimeout chain, and if it
+     ever stops — a throw, a timer the browser drops on the floor — the
+     animation carries on and the exercise goes silent, which is precisely
+     the failure this app had. Anything over a couple of hundred
+     milliseconds without a tick is dead, so restart it. */
+  if (performance.now() - lastSched > 250) {
+    if (schedTimer) clearTimeout(schedTimer);
+    schedTimer = null;
+    scheduleTick();
+  }
 
   for (const e of events) {
     if (e.state === 'pending' && rel > e.t + missWindow(e.v)) noteMissed(e);
@@ -453,45 +528,54 @@ function loop() {
     const idx = Math.floor(rel / iv);
     if (idx !== lastBeat[v] && rel >= -leadSec) {
       lastBeat[v] = idx;
-      flash($('pad' + v), 'beat', 160);
-      /* Fired from the same place as the visual pulse, so what the hand
-         feels and what the eye sees are the same event — which is the
-         point of haptics here: the cross-rhythm arrives through a second
-         sense while you are busy looking at the playhead. A gets the
-         stronger tap so the two voices stay tellable apart. */
-      haptics.pulse(v === 'A' ? 'accent' : 'beat');
+      flash(EL['pad' + v], 'beat', 160);
     }
     const frac = (((rel % iv) + iv) % iv) / iv;
-    $('ap' + v).style.width = (frac * 100).toFixed(1) + '%';
+    // scaleX rather than width: the compositor can do this one on its own,
+    // where a width is two layouts a frame for the whole pad
+    EL['ap' + v].style.transform = 'scaleX(' + frac.toFixed(4) + ')';
   });
 
   if (rel < 0) {
     const beatsLeft = Math.ceil(-rel / (cycleSec / A));
-    $('countin').classList.add('on');
+    EL.countin.classList.add('on');
     const n = String(beatsLeft);
-    const nEl = $('countinN');
+    const nEl = EL.countinN;
     if (nEl.textContent !== n) {
       nEl.textContent = n;
       nEl.style.animation = 'none'; void nEl.offsetWidth; nEl.style.animation = '';
     }
-    $('statusPos').textContent = 'count-in';
+    setStatusPos('count-in');
   } else {
-    $('countin').classList.remove('on');
-    $('statusPos').textContent = 'cycle ' + (Math.floor(rel / cycleSec) + 1);
+    EL.countin.classList.remove('on');
+    setStatusPos('cycle ' + (Math.floor(rel / cycleSec) + 1));
   }
 
   draw(rel);
   rafId = requestAnimationFrame(loop);
 }
 
+/* The two gradients are fixed to the canvas box, so they are rebuilt when
+   it changes size and not sixty times a second. Building a gradient is not
+   expensive on a laptop; on an old phone, two an frame for the whole
+   session is exactly the kind of steady tax that shows up as heat. */
+let gradKey = '', bgGrad = null, headGrad = null;
+function ensureGradients(playX) {
+  const key = W + 'x' + H + ':' + playX;
+  if (key === gradKey) return;
+  gradKey = key;
+  bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, 'rgba(255,255,255,.02)');
+  bgGrad.addColorStop(1, 'rgba(0,0,0,.10)');
+  headGrad = ctx.createLinearGradient(playX, H * 0.07, playX, H * 0.93);
+  headGrad.addColorStop(0, 'rgba(231,236,243,.28)');
+  headGrad.addColorStop(.5, 'rgba(231,236,243,.85)');
+  headGrad.addColorStop(1, 'rgba(231,236,243,.28)');
+}
+
 function draw(rel) {
   const idle = rel < -900;
   ctx.clearRect(0, 0, W, H);
-  const bgG = ctx.createLinearGradient(0, 0, 0, H);
-  bgG.addColorStop(0, 'rgba(255,255,255,.02)');
-  bgG.addColorStop(1, 'rgba(0,0,0,.10)');
-  ctx.fillStyle = bgG;
-  ctx.fillRect(0, 0, W, H);
 
   if (cycleSec <= 0) computeCycle();
   const winSec = clamp(cycleSec * 1.15, 1.1, 6);
@@ -500,6 +584,10 @@ function draw(rel) {
   const yA = H * 0.30, yB = H * 0.70;
   const rN = clamp(Math.min(W * 0.02, H * 0.055), 4.5, 9);
   const relPos = idle ? 0 : rel;
+
+  ensureGradients(playX);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
 
   if (idle) { events = []; genCycle = 0; ensureEvents(winSec); }
   else ensureEvents(rel + winSec);
@@ -582,11 +670,7 @@ function draw(rel) {
   const bandW = Math.max(3, tolMs / 1000 * pps);
   ctx.fillStyle = 'rgba(255,255,255,.04)';
   ctx.fillRect(playX - bandW, H * 0.09, bandW * 2, H * 0.82);
-  const pg = ctx.createLinearGradient(playX, H * 0.07, playX, H * 0.93);
-  pg.addColorStop(0, 'rgba(231,236,243,.28)');
-  pg.addColorStop(.5, 'rgba(231,236,243,.85)');
-  pg.addColorStop(1, 'rgba(231,236,243,.28)');
-  ctx.strokeStyle = pg; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = headGrad; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(playX, H * 0.07); ctx.lineTo(playX, H * 0.93); ctx.stroke();
 
   // floating error labels
@@ -682,7 +766,7 @@ function setLat(v) {
 }
 
 function updateStatus() {
-  $('statusPos').textContent = playing ? 'playing' : 'stopped';
+  setStatusPos(playing ? 'playing' : 'stopped');
   $('statusBpm').textContent = bpm + ' BPM';
 }
 
@@ -770,24 +854,6 @@ document.querySelectorAll('[data-step]').forEach(b => {
   });
 });
 
-/* Haptics is one Poly-wide setting, not a trainer setting — it is offered
-   here as well because this is where you find out you want it, and a
-   change made here is the same change the hub shows. */
-(() => {
-  const el = $('tgHap'), sw = el.querySelector('.sw'), note = $('hapNote');
-  const supported = haptics.isSupported();
-  if (!supported) { el.setAttribute('aria-disabled', 'true'); note.textContent = haptics.supportNote(); }
-  const sync = () => {
-    const on = haptics.isEnabled();
-    sw.classList.toggle('on', on);
-    el.setAttribute('aria-checked', on ? 'true' : 'false');
-    if (supported) note.textContent = on ? haptics.supportNote() : 'Feel each voice as it lands';
-  };
-  sync();
-  haptics.onChange(sync);
-  if (supported) el.addEventListener('click', () => haptics.setEnabled(!haptics.isEnabled()));
-})();
-
 [['tgA', 'A'], ['tgB', 'B'], ['tgTap', 'tap'], ['tgCount', 'count']].forEach(([id, key]) => {
   const el = $(id), sw = el.querySelector('.sw');
   sw.classList.toggle('on', !!sound[key]);
@@ -840,5 +906,7 @@ window.__poly = {
   get clockOffset() { return clockOffset; },
   get ctxState() { return actx && actx.state; },
   get events() { return events.length; },
+  get lateDrops() { return lateDrops; },
+  get schedAgeMs() { return Math.round(performance.now() - lastSched); },
   get stats() { return { streak, best, evaluated, goodCount, meanErrMs: errN ? errSum / errN : null }; },
 };

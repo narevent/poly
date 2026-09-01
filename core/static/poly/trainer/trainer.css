@@ -267,7 +267,13 @@
 
 /* how far into the current beat this voice is — a bar that empties into the hit */
 .approach { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255, 255, 255, .05); }
-.approach i { display: block; height: 100%; width: 0; background: var(--c); }
+/* Full width, scaled from the left edge: the fill moves every frame, and a
+   transform is a compositor job where a width is a layout. */
+.approach i {
+  display: block; height: 100%; width: 100%;
+  transform: scaleX(0); transform-origin: left center;
+  background: var(--c);
+}
 
 #statusHint { color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
