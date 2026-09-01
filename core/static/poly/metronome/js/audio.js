@@ -41,7 +41,7 @@
                   played back to back on the audio clock.
    ============================================================ */
 
-import { playVoice, DEFAULT_VOICE } from '../../shared/voices.js';
+import { playVoice, prepare, voiceLoad, DEFAULT_VOICE } from '../../shared/voices.js';
 import { createContext, attach, ping } from '../../shared/audio-session.js';
 
 const EPS = 1e-6;
@@ -152,6 +152,8 @@ export class MetronomeEngine {
       this.master.connect(lim);
       lim.connect(this.ctx.destination);
 
+      // render every voice to a buffer before the first hit needs one
+      prepare(this.ctx);
       this._initClock();
 
       /* Everything about surviving on a phone — resuming from `interrupted`,

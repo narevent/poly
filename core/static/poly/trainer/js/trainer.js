@@ -9,7 +9,7 @@
    here is the same click there — see shared/voices.js.
    ============================================================ */
 
-import { playVoice, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
+import { playVoice, prepare, voiceLoad, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
 import { createContext, attach, ping, debugState as audioDebug } from '../../shared/audio-session.js';
 
 const $ = id => document.getElementById(id);
@@ -83,7 +83,7 @@ function relNow() { return (actx ? actx.currentTime : 0) - startTime - autoLat; 
    context and why `if (state === 'suspended') resume()` is not enough. The
    trainer only has to say when it wants sound and what to do when the
    context cannot be saved. */
-let actx = null, master = null, voiceBus = null, detachAudio = null;
+let actx = null, master = null, voiceBus = null, bus = null, detachAudio = null;
 function ensureAudio() {
   if (!actx) {
     actx = createContext({ latencyHint: 'interactive' });
@@ -98,6 +98,26 @@ function ensureAudio() {
     voiceBus = actx.createGain();
     voiceBus.gain.value = 1;
     voiceBus.connect(master);
+
+    /* One persistent gain per role. A buffer source has no level of its
+       own, so without these every hit would need a gain node of its own
+       to be anything but unity — and the whole point of the rewrite is
+       that a hit is ONE node. The levels live here, permanently, and the
+       hits ask for unity. */
+    bus = {};
+    for (const [k, v, out] of [['A', 0.9, 'voice'], ['B', 0.85, 'voice'],
+                               ['unison', 1, 'voice'], ['count', 0.8, 'voice'],
+                               ['tapA', 0.8, 'tap'], ['tapB', 0.7, 'tap']]) {
+      const g = actx.createGain();
+      g.gain.value = v;
+      // taps and auditions go straight to master so they still sound
+      // while the exercise is stopped and the voice bus is muted
+      g.connect(out === 'voice' ? voiceBus : master);
+      bus[k] = g;
+    }
+
+    // render every voice to a buffer before anything needs one
+    prepare(actx);
     measureAutoLatency();
     detachAudio = attach(actx, { isActive: () => playing, onLost: audioLost });
   }
@@ -116,7 +136,7 @@ function audioLost(reason) {
   // the page being left, or sitting hidden with nothing running, is a
   // release rather than a fault: still end the run, but do not announce it
   const deliberate = reason === 'pagehide' || reason === 'hidden';
-  actx = null; master = null; voiceBus = null; clockOffset = null;
+  actx = null; master = null; voiceBus = null; bus = null; clockOffset = null;
   if (wasPlaying) {
     stop();
     if (!deliberate) toast('Audio was interrupted — press start again', 'bad');
@@ -129,16 +149,16 @@ function audioLost(reason) {
 function voiceClick(t, v, coin) {
   if (!actx) return;
   if (coin) {
-    if (sound.A || sound.B) playVoice(actx, voiceBus, t, voice.A, 'accent', 1);
+    if (sound.A || sound.B) playVoice(actx, bus.unison, t, voice.A, 'accent');
     return;
   }
-  if (v === 'A' && sound.A) playVoice(actx, voiceBus, t, voice.A, 'normal', 0.9);
-  else if (v === 'B' && sound.B) playVoice(actx, voiceBus, t, voice.B, 'normal', 0.85);
+  if (v === 'A' && sound.A) playVoice(actx, bus.A, t, voice.A, 'normal');
+  else if (v === 'B' && sound.B) playVoice(actx, bus.B, t, voice.B, 'normal');
 }
 /* The player's own tap: pitchless, so it never sounds like a third voice. */
 function tapClick(v) {
   if (!actx) return;
-  playVoice(actx, master, actx.currentTime, 'tick', 'ghost', v === 'A' ? 0.8 : 0.7);
+  playVoice(actx, bus['tap' + v], actx.currentTime, 'tick', 'ghost');
 }
 
 /* ---------------- storage ---------------- */
@@ -267,7 +287,7 @@ function start() {
 
   if (leadSec > 0) {
     for (let i = 0; i < A; i++) {
-      playVoice(actx, voiceBus, startTime - leadSec + i * cycleSec / A, 'click', i === 0 ? 'accent' : 'ghost', 0.8);
+      playVoice(actx, bus.count, startTime - leadSec + i * cycleSec / A, 'click', i === 0 ? 'accent' : 'ghost');
     }
   }
   $('playBtn').classList.add('playing');
@@ -770,7 +790,7 @@ function buildVoicePickers() {
       save();
       // audition it, so the choice is heard rather than guessed
       ensureAudio();
-      playVoice(actx, master, actx.currentTime + 0.02, voice[v], 'normal', 0.9);
+      playVoice(actx, bus['tap' + v], actx.currentTime + 0.02, voice[v], 'normal');
     });
   });
 }
@@ -911,7 +931,7 @@ bindPad('A'); bindPad('B');
 
 document.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.target.matches('input,select,textarea')) return;
+  if (e.target && e.target.matches && e.target.matches('input,select,textarea')) return;
   const k = e.key.toLowerCase();
   if (k === 'f' || k === 'arrowleft' || k === 'a') { e.preventDefault(); ensureAudio(); handleTap('A', e.timeStamp); flashKey('A'); }
   else if (k === 'j' || k === 'arrowright' || k === 'l') { e.preventDefault(); ensureAudio(); handleTap('B', e.timeStamp); flashKey('B'); }
@@ -941,6 +961,7 @@ window.__poly = {
   get audio() { return audioDebug(); },
   get events() { return events.length; },
   get lateDrops() { return lateDrops; },
+  get voices() { return voiceLoad(actx); },
   get schedAgeMs() { return Math.round(performance.now() - lastSched); },
   get stats() { return { streak, best, evaluated, goodCount, meanErrMs: errN ? errSum / errN : null }; },
 };
