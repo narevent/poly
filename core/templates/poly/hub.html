@@ -2,7 +2,10 @@
 {% load static %}
 
 {% block title %}Poly{% endblock %}
-{% block styles %}<link rel="stylesheet" href="{% static 'poly/hub/hub.css' %}" />{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'poly/shared/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'poly/hub/hub.css' %}" />
+{% endblock %}
 
 {% block body %}
 <main class="hub">
@@ -94,8 +97,50 @@
 
   </nav>
 
+  <!-- The one setting that belongs to Poly rather than to either app, so it
+       lives on the launcher: switch it on here and both apps pick it up. -->
+  <div class="hub-settings">
+    <button type="button" class="hub-toggle" id="hapToggle" role="switch" aria-checked="false">
+      <span class="ht-text">
+        <b>Haptics</b>
+        <em id="hapNote">A soft tap on the beat, in both apps</em>
+      </span>
+      <span class="sw" aria-hidden="true"></span>
+    </button>
+  </div>
+
   <p class="hub-foot">Press <kbd>1</kbd> or <kbd>2</kbd> to open</p>
 </main>
+
+<script type="module">
+  import * as haptics from "{% static 'poly/shared/haptics.js' %}";
+
+  const btn = document.getElementById('hapToggle');
+  const sw  = btn.querySelector('.sw');
+  const note = document.getElementById('hapNote');
+  const supported = haptics.isSupported();
+
+  /* Say what this device will actually do rather than promising a
+     vibration every phone can produce — see shared/haptics.js. */
+  if (!supported) {
+    btn.setAttribute('aria-disabled', 'true');
+    note.textContent = haptics.supportNote();
+  }
+
+  function sync() {
+    const on = haptics.isEnabled();
+    sw.classList.toggle('on', on);
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (supported) {
+      note.textContent = on
+        ? haptics.supportNote()
+        : 'A soft tap on the beat, in both apps';
+    }
+  }
+  sync();
+  haptics.onChange(sync);
+  if (supported) btn.addEventListener('click', () => haptics.setEnabled(!haptics.isEnabled()));
+</script>
 
 <script>
   /* Number keys open an app — the hub is a launcher, so it should answer

@@ -230,20 +230,31 @@ const TAIL = { click: 0.15, wood: 0.2, bell: 0.8, beep: 0.2, tick: 0.15 };
 const TAIL_MAX = 0.8;
 
 /* One sweeper per AudioContext, on one timer, which stops itself as soon as
-   there is nothing left to release — a timer per hit would be 55 a second. */
+   there is nothing left to release — a timer per hit would be 55 a second.
+
+   It watches two clocks. ctx.currentTime is the right one: while the context
+   is suspended it does not advance, and those hits genuinely have not played
+   yet. But a suspended — or interrupted, or dead — context stops that clock
+   for good, and then the queue could never drain and the timer could never
+   stop. So a wall-clock deadline with two seconds of slack backs it up: if
+   that much real time has gone by, the hit either sounded long ago or the
+   context is no longer making sound at all, and either way the nodes belong
+   to nobody. */
 const sweepers = new WeakMap();
 function releaseAfter(ctx, hub, when) {
   let s = sweepers.get(ctx);
   if (!s) { s = { queue: [], timer: null }; sweepers.set(ctx, s); }
-  s.queue.push({ hub, when });
+  const slack = Math.max(0, when - ctx.currentTime) * 1000 + 2000;
+  s.queue.push({ hub, when, wall: Date.now() + slack });
   if (s.timer !== null) return;
   s.timer = setInterval(() => {
-    // ctx.currentTime, not wall clock: while the context is suspended it does
-    // not advance, and those hits genuinely have not played yet
     const now = ctx.currentTime;
+    const wall = Date.now();
+    // a closed context holds nothing: let the whole queue go and stop
+    const dead = ctx.state === 'closed';
     let kept = 0;
     for (const item of s.queue) {
-      if (item.when > now) { s.queue[kept++] = item; continue; }
+      if (!dead && item.when > now && item.wall > wall) { s.queue[kept++] = item; continue; }
       try { item.hub.disconnect(); } catch (e) { /* already gone */ }
     }
     s.queue.length = kept;

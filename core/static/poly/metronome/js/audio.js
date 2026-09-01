@@ -42,11 +42,17 @@
    ============================================================ */
 
 import { playVoice, DEFAULT_VOICE } from '../../shared/voices.js';
-
-const A = (typeof AudioContext !== 'undefined') ? AudioContext
-        : (typeof webkitAudioContext !== 'undefined') ? webkitAudioContext : null;
+import { createContext, attach, ping } from '../../shared/audio-session.js';
 
 const EPS = 1e-6;
+
+/* How many times the engine may silently rebuild a dead audio context
+   before it stops trying and tells the app instead. A phone that is in a
+   call, or whose audio route has just gone away, will kill a fresh
+   context as fast as we can make one; three attempts inside a minute is
+   plenty to ride out a transient and few enough to notice a real one. */
+const RECOVERY_LIMIT = 3;
+const RECOVERY_WINDOW_MS = 60000;
 
 /* Ticks on the audio thread every 512 frames (~10.7 ms at 48 kHz).
    Loaded from a Blob so the app stays a single-directory static site. */
@@ -80,7 +86,11 @@ export class MetronomeEngine {
        every mid-run join is quantised to */
     this._grid = { bpm: null, _anchor: 0, _k: 0, _bpm: 120 };
 
+    this._detach = null;        // unregisters this ctx from the audio session
+    this._recoveries = [];      // timestamps of recent automatic rebuilds
+
     this.onTick = null;         // (info) => void  — per-slice UI pulse
+    this.onAudioLost = null;    // (reason, deliberate) => void — the context is gone
     this.onItemChange = null;   // (index) => void — sequence advanced
     this.onSequenceEnd = null;  // () => void      — sequence finished
 
@@ -99,8 +109,9 @@ export class MetronomeEngine {
 
   ensureCtx() {
     if (!this.ctx) {
-      if (!A) throw new Error('Web Audio not supported');
-      this.ctx = new A({ latencyHint: 'interactive' });
+      const ctx = createContext({ latencyHint: 'interactive' });
+      if (!ctx) throw new Error('Web Audio not supported');
+      this.ctx = ctx;
 
       /* Mixer: each layer gets a persistent channel gain, all channels feed one
          normalised bus, then the master and a safety limiter.
@@ -125,13 +136,82 @@ export class MetronomeEngine {
       lim.connect(this.ctx.destination);
 
       this._initClock();
-      if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', () => {
-          if (!document.hidden && this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
-        });
-      }
+
+      /* Everything about surviving on a phone — resuming from `interrupted`,
+         noticing a context whose clock has stopped, closing this one when the
+         page is left so the next page does not inherit an exhausted audio
+         session — belongs to the session layer, which handles it the same way
+         for the trainer. All the engine has to say is whether it currently
+         wants sound, and what to do when the context is beyond saving. */
+      this._detach = attach(this.ctx, {
+        isActive: () => this.running,
+        onLost: (reason) => this._onCtxLost(reason),
+      });
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    ping(this.ctx);
+  }
+
+  /* The context is gone: closed under us, stuck in a state it will not
+     leave, or running with a clock that stopped moving. None of that is
+     recoverable in place, so the whole graph goes and a new one is built.
+     If we were playing, playback picks itself back up — the user gets a
+     bar's hiccup instead of a metronome that is silently doing nothing. */
+  _onCtxLost(reason) {
+    /* Two very different events arrive here. A fault — the context died
+       under a running metronome — is worth rebuilding and reporting. A
+       release — the page was left, or sat hidden with nothing playing —
+       is us handing the hardware back on purpose, and rebuilding after
+       one would restart a metronome on a page the user has walked away
+       from. */
+    const deliberate = reason === 'pagehide' || reason === 'hidden';
+    const wasRunning = this.running;
+    const wasSequence = !!this._seq;
+    this._disposeCtx();
+
+    const t = Date.now();
+    this._recoveries = this._recoveries.filter(x => t - x < RECOVERY_WINDOW_MS);
+    // a sequence cannot resume mid-programme without lying about where it
+    // is, so it is reported rather than restarted
+    const canRetry = wasRunning && !deliberate && !wasSequence
+                     && this._recoveries.length < RECOVERY_LIMIT;
+
+    if (canRetry) {
+      this._recoveries.push(t);
+      try {
+        this.ensureCtx();
+        this.start();
+        return;
+      } catch (e) { this._disposeCtx(); }
+    }
+    /* Only worth telling the app about if it interrupted something. The
+       transport has to come back to rest either way — a lit play button
+       over a disposed context is the one state that must not survive —
+       but a deliberate release is not a fault to announce. */
+    if (wasRunning && this.onAudioLost) this.onAudioLost(reason, deliberate);
+  }
+
+  /* Let go of everything hanging off the context. The session layer has
+     already closed it by the time it tells us, but this is also the path
+     for a failed rebuild, so it never assumes that. */
+  _disposeCtx() {
+    this.running = false;
+    if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+    if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
+    this._ticks.length = 0;
+    this._seq = null;
+    this._seqIdx = -1;
+    this._seqEnded = false;
+
+    if (this._detach) { this._detach(); this._detach = null; }
+    if (this._clock) { try { this._clock.port.onmessage = null; this._clock.disconnect(); } catch (e) {} }
+    this._clock = null;
+    for (const ch of this._channels.values()) { try { ch.disconnect(); } catch (e) {} }
+    this._channels.clear();
+    for (const l of this.layers) l._chan = null;
+    if (this.ctx && this.ctx.state !== 'closed') { try { this.ctx.close(); } catch (e) {} }
+    this.ctx = null;
+    this.mix = null;
+    this.master = null;
   }
 
   /* Upgrade the scheduler clock from setTimeout to the audio thread.

@@ -8,6 +8,8 @@ import {
   load, save, makeLayer, uid, setBeatSubdiv, addBeat, removeBeat, LAYER_COLOR_OPTIONS,
 } from './store.js';
 import { VOICES, DEFAULT_VOICE } from '../../shared/voices.js';
+import * as haptics from '../../shared/haptics.js';
+import { debugState as audioDebug } from '../../shared/audio-session.js';
 
 const ART_CYCLE = ['accent', 'normal', 'ghost', 'silent'];
 /* Every subdivision the beat menu offers is reachable by tapping the hub too —
@@ -116,6 +118,7 @@ function stopPlayback() {
   app.song.playing = false;
   app.song.items = null;
   app.$.playBtn.classList.remove('playing');
+  haptics.cancel();
   clearPulse();
   stopProgressLoop();
 
@@ -161,7 +164,28 @@ function pulseMs(info) {
   };
 }
 
+/* Which layer the phone is allowed to tap along with.
+
+   Every layer sends its own beats, and a hand cannot feel three grids at
+   once — three motors' worth of pulses inside one beat arrives as a single
+   smear and the pulse stops meaning anything. So the haptic follows ONE
+   layer: the first audible one, which is the layer the bar is counted in
+   and the same one the song sequencer treats as master. Read off the
+   engine rather than off the state, so it is still right while a song is
+   playing a programme the state does not describe. */
+function hapticLayerId() {
+  const ls = app.engine.layers;
+  const l = ls.find(x => x.enabled) || ls[0];
+  return l ? l.id : null;
+}
+
 function onEngineTick(info) {
+  /* Before the early return below: the pulse is about the beat, not about
+     whether that layer's row happens to be on screen. */
+  if (info.isBeat && info.id === hapticLayerId()) {
+    haptics.pulse(info.beat === 0 ? 'accent' : 'beat');
+  }
+
   const row = document.querySelector(`.layer-row[data-id="${info.id}"]`);
   if (!row) return;
   const slice = row.querySelector(`.pie-slice[data-beat="${info.beat}"][data-sub="${info.sub}"]`);
@@ -1176,6 +1200,15 @@ function init() {
     statusBpm: $('statusBpm'),
   };
   app.engine.onTick = onEngineTick;
+  /* The audio context can die under a phone — a call, headphones pulled,
+     the OS taking the audio session away. The engine rebuilds itself
+     where it can; when it cannot, the transport has to stop looking like
+     it is playing, because the one thing worse than silence is a lit play
+     button over it. */
+  app.engine.onAudioLost = (reason, deliberate) => {
+    stopPlayback();
+    if (!deliberate) app.$.statusPos.textContent = 'audio interrupted — press play';
+  };
   app.engine.setBpm(app.state.bpm);
   buildEngineLayers();
 
@@ -1189,6 +1222,15 @@ function init() {
   render();
   updateTempoDisplays();
 }
+
+/* A read-only window onto the engine, for checking from the console that
+   the audio context is still alive — the trainer carries the same handle. */
+window.__poly = {
+  get running() { return app.engine.running; },
+  get ctxState() { return app.engine.ctx ? app.engine.ctx.state : null; },
+  get ctxTime() { return app.engine.ctx ? app.engine.ctx.currentTime : null; },
+  get audio() { return audioDebug(); },
+};
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

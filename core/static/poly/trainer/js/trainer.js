@@ -10,6 +10,8 @@
    ============================================================ */
 
 import { playVoice, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
+import { createContext, attach, ping } from '../../shared/audio-session.js';
+import * as haptics from '../../shared/haptics.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
@@ -34,7 +36,12 @@ const MONO = "'JetBrains Mono', ui-monospace, monospace";
 /* ---------------- state ---------------- */
 let A = 3, B = 4, bpm = 90, tolMs = 50, latMs = 0;
 let voice = { A: 'click', B: 'beep' };
-let sound = { A: true, B: true, tap: true, count: true, hap: true };
+/* `hap` is gone from here: haptics are one setting for the whole of Poly,
+   switched on in the hub and read from shared/haptics.js, so turning it on
+   before you pick an app is enough. A stored `hap` from before that change
+   is ignored rather than migrated — the shared setting is opt-in, and
+   silently switching on a phone's motor is not a migration. */
+let sound = { A: true, B: true, tap: true, count: true };
 
 let playing = false, startTime = 0, cycleSec = 0;
 let events = [], genCycle = 0;
@@ -70,27 +77,52 @@ function measureAutoLatency() {
     : 'device latency not reported';
 }
 /* position of the sound the player is hearing right now */
-function relNow() { return actx.currentTime - startTime - autoLat; }
+function relNow() { return (actx ? actx.currentTime : 0) - startTime - autoLat; }
 
-/* ---------------- audio ---------------- */
-let actx = null, master = null;
+/* ---------------- audio ----------------
+   Building and keeping the context is shared/audio-session.js's job — see
+   the note at the top of that file for what a phone does to a Web Audio
+   context and why `if (state === 'suspended') resume()` is not enough. The
+   trainer only has to say when it wants sound and what to do when the
+   context cannot be saved. */
+let actx = null, master = null, detachAudio = null;
 function ensureAudio() {
   if (!actx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    try { actx = new AC({ latencyHint: 'interactive' }); } catch (e) { actx = new AC(); }
+    actx = createContext({ latencyHint: 'interactive' });
+    if (!actx) return null;
     master = actx.createGain();
     master.gain.value = 0.55;
     master.connect(actx.destination);
     measureAutoLatency();
+    detachAudio = attach(actx, { isActive: () => playing, onLost: audioLost });
   }
-  if (actx.state === 'suspended') actx.resume();
+  ping(actx);
   return actx;
+}
+
+/* The context died: an interruption it never came back from, or a route
+   change that left it running with a stopped clock. An exercise cannot be
+   resumed through that — every note after the gap was scored against a
+   clock that was not moving — so the run ends and says why. The next start
+   builds a fresh context. */
+function audioLost(reason) {
+  if (detachAudio) { detachAudio(); detachAudio = null; }
+  const wasPlaying = playing;
+  // the page being left, or sitting hidden with nothing running, is a
+  // release rather than a fault: still end the run, but do not announce it
+  const deliberate = reason === 'pagehide' || reason === 'hidden';
+  actx = null; master = null; clockOffset = null;
+  if (wasPlaying) {
+    stop();
+    if (!deliberate) toast('Audio was interrupted — press start again', 'bad');
+  }
 }
 
 /* One scheduled note. A unison hit is played as an accent on voice A only —
    two voices firing on the same sample sum into a flam-flavoured blur, and
    the accent reads as "both" more clearly than the pile-up does. */
 function voiceClick(t, v, coin) {
+  if (!actx) return;
   if (coin) {
     if (sound.A || sound.B) playVoice(actx, master, t, voice.A, 'accent', 1);
     return;
@@ -100,6 +132,7 @@ function voiceClick(t, v, coin) {
 }
 /* The player's own tap: pitchless, so it never sounds like a third voice. */
 function tapClick(v) {
+  if (!actx) return;
   playVoice(actx, master, actx.currentTime, 'tick', 'ghost', v === 'A' ? 0.8 : 0.7);
 }
 
@@ -120,7 +153,9 @@ function load() {
     if (s.bpm) bpm = clamp(s.bpm | 0, 30, 240);
     if (s.tolMs) tolMs = clamp(s.tolMs | 0, 15, 120);
     if (typeof s.latMs === 'number') latMs = clamp(s.latMs, -120, 120);
-    if (s.sound) sound = Object.assign(sound, s.sound);
+    // key by key, so a retired flag in old storage (`hap`, now a Poly-wide
+    // setting of its own) is dropped rather than carried around for ever
+    if (s.sound) for (const k of Object.keys(sound)) if (k in s.sound) sound[k] = !!s.sound[k];
     if (s.voice) {
       if (isVoice(s.voice.A)) voice.A = resolveVoice(s.voice.A);
       if (isVoice(s.voice.B)) voice.B = resolveVoice(s.voice.B);
@@ -158,7 +193,7 @@ function pruneEvents(rel) {
 let schedTimer = null, rafId = null, leadSec = 0;
 
 function start() {
-  ensureAudio();
+  if (!ensureAudio()) return;
   if (playing) return;
   playing = true;
   computeCycle();
@@ -200,6 +235,7 @@ function restartKeepingScore() {
 
 function stop(quiet) {
   playing = false;
+  haptics.cancel();
   clearTimeout(schedTimer);
   cancelAnimationFrame(rafId);
   $('playBtn').classList.remove('playing');
@@ -215,12 +251,7 @@ function stop(quiet) {
 }
 
 function scheduleTick() {
-  if (!playing) return;
-  /* iOS can suspend the context out from under a running exercise — an
-     interruption, a route change, a call — and nothing resumes it on its own,
-     so the exercise keeps running silently. The metronome has carried this
-     watchdog for a while; the trainer needs it for the same reason. */
-  if (actx.state === 'suspended') actx.resume();
+  if (!playing || !actx) return;
   syncClock();
   const now = actx.currentTime, rel = now - startTime;
   ensureEvents(rel);
@@ -282,7 +313,7 @@ function registerGrade(v, grade, errMs, ghost) {
   } else if (grade === 'bad') {
     if (streak >= 8) toast('Streak broken at ' + streak, 'bad');
     streak = 0;
-    if (sound.hap && navigator.vibrate) navigator.vibrate(18);
+    haptics.pulse('miss');
   }
   pulsePad(v, grade, errMs, ghost);
   updateStats();
@@ -407,7 +438,7 @@ if (window.ResizeObserver) {
 }
 
 function loop() {
-  if (!playing) return;
+  if (!playing || !actx) return;
   const rel = relNow();
 
   for (const e of events) {
@@ -423,6 +454,12 @@ function loop() {
     if (idx !== lastBeat[v] && rel >= -leadSec) {
       lastBeat[v] = idx;
       flash($('pad' + v), 'beat', 160);
+      /* Fired from the same place as the visual pulse, so what the hand
+         feels and what the eye sees are the same event — which is the
+         point of haptics here: the cross-rhythm arrives through a second
+         sense while you are busy looking at the playhead. A gets the
+         stronger tap so the two voices stay tellable apart. */
+      haptics.pulse(v === 'A' ? 'accent' : 'beat');
     }
     const frac = (((rel % iv) + iv) % iv) / iv;
     $('ap' + v).style.width = (frac * 100).toFixed(1) + '%';
@@ -733,7 +770,25 @@ document.querySelectorAll('[data-step]').forEach(b => {
   });
 });
 
-[['tgA', 'A'], ['tgB', 'B'], ['tgTap', 'tap'], ['tgCount', 'count'], ['tgHap', 'hap']].forEach(([id, key]) => {
+/* Haptics is one Poly-wide setting, not a trainer setting — it is offered
+   here as well because this is where you find out you want it, and a
+   change made here is the same change the hub shows. */
+(() => {
+  const el = $('tgHap'), sw = el.querySelector('.sw'), note = $('hapNote');
+  const supported = haptics.isSupported();
+  if (!supported) { el.setAttribute('aria-disabled', 'true'); note.textContent = haptics.supportNote(); }
+  const sync = () => {
+    const on = haptics.isEnabled();
+    sw.classList.toggle('on', on);
+    el.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (supported) note.textContent = on ? haptics.supportNote() : 'Feel each voice as it lands';
+  };
+  sync();
+  haptics.onChange(sync);
+  if (supported) el.addEventListener('click', () => haptics.setEnabled(!haptics.isEnabled()));
+})();
+
+[['tgA', 'A'], ['tgB', 'B'], ['tgTap', 'tap'], ['tgCount', 'count']].forEach(([id, key]) => {
   const el = $(id), sw = el.querySelector('.sw');
   sw.classList.toggle('on', !!sound[key]);
   el.addEventListener('click', () => {
