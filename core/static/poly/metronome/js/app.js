@@ -8,7 +8,6 @@ import {
   load, save, makeLayer, uid, setBeatSubdiv, addBeat, removeBeat, LAYER_COLOR_OPTIONS,
 } from './store.js';
 import { VOICES, DEFAULT_VOICE } from '../../shared/voices.js';
-import * as haptics from '../../shared/haptics.js';
 import { debugState as audioDebug } from '../../shared/audio-session.js';
 
 const ART_CYCLE = ['accent', 'normal', 'ghost', 'silent'];
@@ -118,7 +117,6 @@ function stopPlayback() {
   app.song.playing = false;
   app.song.items = null;
   app.$.playBtn.classList.remove('playing');
-  haptics.cancel();
   clearPulse();
   stopProgressLoop();
 
@@ -164,28 +162,7 @@ function pulseMs(info) {
   };
 }
 
-/* Which layer the phone is allowed to tap along with.
-
-   Every layer sends its own beats, and a hand cannot feel three grids at
-   once — three motors' worth of pulses inside one beat arrives as a single
-   smear and the pulse stops meaning anything. So the haptic follows ONE
-   layer: the first audible one, which is the layer the bar is counted in
-   and the same one the song sequencer treats as master. Read off the
-   engine rather than off the state, so it is still right while a song is
-   playing a programme the state does not describe. */
-function hapticLayerId() {
-  const ls = app.engine.layers;
-  const l = ls.find(x => x.enabled) || ls[0];
-  return l ? l.id : null;
-}
-
 function onEngineTick(info) {
-  /* Before the early return below: the pulse is about the beat, not about
-     whether that layer's row happens to be on screen. */
-  if (info.isBeat && info.id === hapticLayerId()) {
-    haptics.pulse(info.beat === 0 ? 'accent' : 'beat');
-  }
-
   const row = document.querySelector(`.layer-row[data-id="${info.id}"]`);
   if (!row) return;
   const slice = row.querySelector(`.pie-slice[data-beat="${info.beat}"][data-sub="${info.sub}"]`);
