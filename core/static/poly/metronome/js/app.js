@@ -7,7 +7,7 @@ import { MetronomeEngine } from './audio.js';
 import {
   load, save, makeLayer, uid, setBeatSubdiv, addBeat, removeBeat, LAYER_COLOR_OPTIONS,
 } from './store.js';
-import { VOICES, DEFAULT_VOICE } from '../../shared/voices.js';
+import { VOICES, DEFAULT_VOICE, voiceLoad } from '../../shared/voices.js';
 import { debugState as audioDebug } from '../../shared/audio-session.js';
 
 const ART_CYCLE = ['accent', 'normal', 'ghost', 'silent'];
@@ -1206,6 +1206,7 @@ window.__poly = {
   get running() { return app.engine.running; },
   get ctxState() { return app.engine.ctx ? app.engine.ctx.state : null; },
   get ctxTime() { return app.engine.ctx ? app.engine.ctx.currentTime : null; },
+  get voices() { return voiceLoad(app.engine.ctx); },
   get audio() { return audioDebug(); },
 };
 
