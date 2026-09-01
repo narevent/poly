@@ -54,6 +54,15 @@ const EPS = 1e-6;
 const RECOVERY_LIMIT = 3;
 const RECOVERY_WINDOW_MS = 60000;
 
+const MASTER_GAIN = 0.9;
+
+/* How far after the press the first hit lands. Not just scheduling
+   slack: if the context has been idle long enough to be suspended, this
+   is the room the audio route gets to wake up before it is asked for a
+   two-millisecond transient — a cold route swallows the attack, which
+   reads as the metronome starting a beat late. */
+const START_LEAD = 0.18;
+
 /* Ticks on the audio thread every 512 frames (~10.7 ms at 48 kHz).
    Loaded from a Blob so the app stays a single-directory static site. */
 const CLOCK_WORKLET = `
@@ -78,8 +87,16 @@ export class MetronomeEngine {
     this.running = false;
     this._timer = null;
     this._clock = null;      // AudioWorkletNode once it is ready
-    this._ahead = 0.140;     // schedule-ahead window (s)
-    this._tick = 0.020;      // fallback lookahead interval (s)
+    /* Schedule-ahead window. This is the size of the main-thread stall a
+       run can absorb without missing a note, and on a phone a stall of a
+       few hundred milliseconds — GC, a layout, a thermal throttle — is
+       ordinary. Nothing sounds any later for a wide window: every hit
+       carries an audio-clock time, so the window only decides how early
+       it is handed over. The price is that an edit takes up to this long
+       to be heard, and that stopping has to take back what is already
+       booked (see _mute). */
+    this._ahead = 0.350;     // schedule-ahead window (s)
+    this._tick = 0.030;      // fallback lookahead interval (s)
     this._globalBpm = 120;
 
     /* the shared phase grid — a virtual layer at the global tempo that
@@ -124,7 +141,7 @@ export class MetronomeEngine {
          The limiter is now only a backstop for coincident downbeats. */
       this.mix = this.ctx.createGain();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.9;
+      this.master.gain.value = MASTER_GAIN;
       this.mix.connect(this.master);
       const lim = this.ctx.createDynamicsCompressor();
       lim.threshold.value = -3;
@@ -324,11 +341,24 @@ export class MetronomeEngine {
 
   setBpm(bpm) { this._globalBpm = bpm; }
 
+  /* Hits are booked up to `_ahead` seconds in advance, so stopping has to
+     take back the ones already on the clock — otherwise the metronome
+     plays on for a third of a second after the button says it stopped.
+     Ramped over 20 ms rather than cut, because a gain step is a click. */
+  _mute(on) {
+    if (!this.master || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const g = this.master.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(on ? 0 : MASTER_GAIN, t + 0.02);
+  }
+
   /* ---- free run ---- */
   start() {
     this.ensureCtx();
     this._syncChannels();   // layers may have been set before the ctx existed
-    const t0 = this.ctx.currentTime + 0.08;
+    const t0 = this.ctx.currentTime + START_LEAD;
     this._seq = null;
     this._seqIdx = -1;
     this._seqEnded = false;
@@ -338,6 +368,7 @@ export class MetronomeEngine {
     for (const l of this.layers) {
       l._anchor = t0; l._k = 0; l._beat = 0; l._bpm = this._bpmFor(l);
     }
+    this._mute(false);
     this._startClock();
     this._startVisual();
   }
@@ -352,13 +383,15 @@ export class MetronomeEngine {
     this._seq = items;
     this._seqEnded = false;
     this.running = true;
-    this._applyItem(0, this.ctx.currentTime + 0.08);
+    this._applyItem(0, this.ctx.currentTime + START_LEAD);
+    this._mute(false);
     this._startClock();
     this._startVisual();
     return true;
   }
 
   stop() {
+    this._mute(true);
     this.running = false;
     if (this._timer) { clearTimeout(this._timer); this._timer = null; }
     if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }

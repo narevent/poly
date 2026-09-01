@@ -10,7 +10,7 @@
    ============================================================ */
 
 import { playVoice, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
-import { createContext, attach, ping } from '../../shared/audio-session.js';
+import { createContext, attach, ping, debugState as audioDebug } from '../../shared/audio-session.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
@@ -83,7 +83,7 @@ function relNow() { return (actx ? actx.currentTime : 0) - startTime - autoLat; 
    context and why `if (state === 'suspended') resume()` is not enough. The
    trainer only has to say when it wants sound and what to do when the
    context cannot be saved. */
-let actx = null, master = null, detachAudio = null;
+let actx = null, master = null, voiceBus = null, detachAudio = null;
 function ensureAudio() {
   if (!actx) {
     actx = createContext({ latencyHint: 'interactive' });
@@ -91,6 +91,13 @@ function ensureAudio() {
     master = actx.createGain();
     master.gain.value = 0.55;
     master.connect(actx.destination);
+    /* The exercise's own notes go through a second gain, so stopping can
+       silence the ones already scheduled ahead without touching anything
+       else. Taps and the voice auditions in the settings sheet hang off
+       `master` directly and still sound while stopped. */
+    voiceBus = actx.createGain();
+    voiceBus.gain.value = 1;
+    voiceBus.connect(master);
     measureAutoLatency();
     detachAudio = attach(actx, { isActive: () => playing, onLost: audioLost });
   }
@@ -109,7 +116,7 @@ function audioLost(reason) {
   // the page being left, or sitting hidden with nothing running, is a
   // release rather than a fault: still end the run, but do not announce it
   const deliberate = reason === 'pagehide' || reason === 'hidden';
-  actx = null; master = null; clockOffset = null;
+  actx = null; master = null; voiceBus = null; clockOffset = null;
   if (wasPlaying) {
     stop();
     if (!deliberate) toast('Audio was interrupted — press start again', 'bad');
@@ -122,11 +129,11 @@ function audioLost(reason) {
 function voiceClick(t, v, coin) {
   if (!actx) return;
   if (coin) {
-    if (sound.A || sound.B) playVoice(actx, master, t, voice.A, 'accent', 1);
+    if (sound.A || sound.B) playVoice(actx, voiceBus, t, voice.A, 'accent', 1);
     return;
   }
-  if (v === 'A' && sound.A) playVoice(actx, master, t, voice.A, 'normal', 0.9);
-  else if (v === 'B' && sound.B) playVoice(actx, master, t, voice.B, 'normal', 0.85);
+  if (v === 'A' && sound.A) playVoice(actx, voiceBus, t, voice.A, 'normal', 0.9);
+  else if (v === 'B' && sound.B) playVoice(actx, voiceBus, t, voice.B, 'normal', 0.85);
 }
 /* The player's own tap: pitchless, so it never sounds like a third voice. */
 function tapClick(v) {
@@ -219,6 +226,18 @@ function pruneEvents(rel) {
 
 /* ---------------- transport ---------------- */
 let schedTimer = null, rafId = null, leadSec = 0;
+/* How far ahead notes are handed to the audio clock, and how often the
+   scheduler wakes up to do it. The window is what a stall has to exceed
+   before anything is missed, so on a phone — where the main thread can
+   disappear for a few hundred milliseconds at a time under GC, a layout
+   or a thermal throttle — it wants to be generous. Nothing is heard any
+   later for it: every hit is stamped with an audio-clock time when it is
+   scheduled, so the window only decides how early that happens. The cost
+   is that stopping has to silence what is already booked, which is what
+   the `voiceBus` gain is for. */
+const LOOKAHEAD = 0.8;
+const TICK_MS = 40;
+
 /* How late a note may be before playing it would be worse than not. A
    flam is better than a hole, up to a point; past this it is neither.
    `lateDrops` is a symptom counter — see the __poly handle. */
@@ -237,6 +256,10 @@ function start() {
   setStat('sAcc', '—'); setStat('sTiming', '—');
   $('sTiming').style.color = '';
 
+  // whatever the last stop muted, this run is audible
+  voiceBus.gain.cancelScheduledValues(actx.currentTime);
+  voiceBus.gain.setValueAtTime(1, actx.currentTime);
+
   leadSec = sound.count ? cycleSec : 0;
   clockOffset = null; syncClock(); measureAutoLatency();
   startTime = actx.currentTime + 0.18 + leadSec;
@@ -244,7 +267,7 @@ function start() {
 
   if (leadSec > 0) {
     for (let i = 0; i < A; i++) {
-      playVoice(actx, master, startTime - leadSec + i * cycleSec / A, 'click', i === 0 ? 'accent' : 'ghost', 0.8);
+      playVoice(actx, voiceBus, startTime - leadSec + i * cycleSec / A, 'click', i === 0 ? 'accent' : 'ghost', 0.8);
     }
   }
   $('playBtn').classList.add('playing');
@@ -268,6 +291,16 @@ function restartKeepingScore() {
 
 function stop(quiet) {
   playing = false;
+  /* Notes are booked up to LOOKAHEAD seconds ahead, so stopping has to
+     take back the ones already on the clock — otherwise the exercise
+     carries on for most of a second after the button says it has not.
+     A short ramp rather than a cut, because a gain step is a click. */
+  if (voiceBus && actx) {
+    const t = actx.currentTime;
+    voiceBus.gain.cancelScheduledValues(t);
+    voiceBus.gain.setValueAtTime(voiceBus.gain.value, t);
+    voiceBus.gain.linearRampToValueAtTime(0, t + 0.02);
+  }
   clearTimeout(schedTimer);
   cancelAnimationFrame(rafId);
   $('playBtn').classList.remove('playing');
@@ -301,7 +334,7 @@ function scheduleTick() {
     for (const e of events) {
       if (e.sched) continue;
       const at = startTime + e.t;
-      if (at < now + 0.3) {
+      if (at < now + LOOKAHEAD) {
         e.sched = true;
         if (at >= now - LATE_GRACE) voiceClick(Math.max(at, now), e.v, e.coin);
         else lateDrops++;
@@ -311,7 +344,7 @@ function scheduleTick() {
     // one bad hit is a missed note, not the end of the exercise
     console.warn('scheduler tick failed', err);
   } finally {
-    if (playing) schedTimer = setTimeout(scheduleTick, 25);
+    if (playing) schedTimer = setTimeout(scheduleTick, TICK_MS);
     else schedTimer = null;
   }
 }
@@ -905,6 +938,7 @@ window.__poly = {
   get autoLatMs() { return Math.round(autoLat * 1000); },
   get clockOffset() { return clockOffset; },
   get ctxState() { return actx && actx.state; },
+  get audio() { return audioDebug(); },
   get events() { return events.length; },
   get lateDrops() { return lateDrops; },
   get schedAgeMs() { return Math.round(performance.now() - lastSched); },
