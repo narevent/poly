@@ -192,6 +192,10 @@ select {
 }
 .sw.on { background: var(--accent-soft); border-color: var(--accent); }
 .sw.on::after { transform: translateX(20px); background: var(--accent); }
+/* A toggle for something this device cannot do. Left visible — a setting
+   that is simply absent reads as a bug — but plainly not operable. */
+[aria-disabled="true"] > .sw { pointer-events: none; }
+.toggle[aria-disabled="true"] { opacity: .55; cursor: default; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 560px) {
