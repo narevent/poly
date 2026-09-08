@@ -9,6 +9,7 @@ import {
 } from './store.js';
 import { VOICES, DEFAULT_VOICE, voiceLoad } from '../../shared/voices.js';
 import { debugState as audioDebug } from '../../shared/audio-session.js';
+import { bindTransport, warmOnFirstGesture } from '../../shared/transport.js';
 
 const ART_CYCLE = ['accent', 'normal', 'ghost', 'silent'];
 /* Every subdivision the beat menu offers is reachable by tapping the hub too —
@@ -1189,7 +1190,12 @@ function init() {
   app.engine.setBpm(app.state.bpm);
   buildEngineLayers();
 
-  app.$.playBtn.addEventListener('click', togglePlay);
+  /* Play runs on finger-down, not on the click that arrives when the
+     finger lifts, and the audio context is built on the first touch
+     anywhere rather than inside the press itself. Both are latency the
+     player hears as the metronome starting late. */
+  bindTransport(app.$.playBtn, togglePlay);
+  warmOnFirstGesture(() => app.engine.ensureCtx());
   document.querySelectorAll('[data-view]').forEach(b => {
     b.addEventListener('click', () => switchView(b.dataset.view));
   });

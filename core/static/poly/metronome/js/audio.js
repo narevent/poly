@@ -42,7 +42,7 @@
    ============================================================ */
 
 import { playVoice, prepare, voiceLoad, DEFAULT_VOICE } from '../../shared/voices.js';
-import { createContext, attach, ping } from '../../shared/audio-session.js';
+import { createContext, attach, ping, startLead } from '../../shared/audio-session.js';
 
 const EPS = 1e-6;
 
@@ -55,13 +55,6 @@ const RECOVERY_LIMIT = 3;
 const RECOVERY_WINDOW_MS = 60000;
 
 const MASTER_GAIN = 0.9;
-
-/* How far after the press the first hit lands. Not just scheduling
-   slack: if the context has been idle long enough to be suspended, this
-   is the room the audio route gets to wake up before it is asked for a
-   two-millisecond transient — a cold route swallows the attack, which
-   reads as the metronome starting a beat late. */
-const START_LEAD = 0.18;
 
 /* Ticks on the audio thread every 512 frames (~10.7 ms at 48 kHz).
    Loaded from a Blob so the app stays a single-directory static site. */
@@ -346,21 +339,29 @@ export class MetronomeEngine {
   /* Hits are booked up to `_ahead` seconds in advance, so stopping has to
      take back the ones already on the clock — otherwise the metronome
      plays on for a third of a second after the button says it stopped.
-     Ramped over 20 ms rather than cut, because a gain step is a click. */
-  _mute(on) {
+     Ramped over 20 ms rather than cut, because a gain step is a click.
+
+     `by` is the time the ramp must be finished. Unmuting has to beat the
+     first hit to the destination: now that the start lead is about two
+     render quanta rather than a fifth of a second, a fixed 20 ms ramp
+     would still be climbing when the downbeat arrived and would eat its
+     attack — the exact symptom the short lead is meant to remove. */
+  _mute(on, by) {
     if (!this.master || !this.ctx) return;
     const t = this.ctx.currentTime;
+    const end = Math.max(t, Math.min(by != null ? by : t + 0.02, t + 0.02));
     const g = this.master.gain;
     g.cancelScheduledValues(t);
     g.setValueAtTime(g.value, t);
-    g.linearRampToValueAtTime(on ? 0 : MASTER_GAIN, t + 0.02);
+    if (end <= t) g.setValueAtTime(on ? 0 : MASTER_GAIN, t);
+    else g.linearRampToValueAtTime(on ? 0 : MASTER_GAIN, end);
   }
 
   /* ---- free run ---- */
   start() {
     this.ensureCtx();
     this._syncChannels();   // layers may have been set before the ctx existed
-    const t0 = this.ctx.currentTime + START_LEAD;
+    const t0 = this.ctx.currentTime + startLead(this.ctx);
     this._seq = null;
     this._seqIdx = -1;
     this._seqEnded = false;
@@ -370,7 +371,7 @@ export class MetronomeEngine {
     for (const l of this.layers) {
       l._anchor = t0; l._k = 0; l._beat = 0; l._bpm = this._bpmFor(l);
     }
-    this._mute(false);
+    this._mute(false, t0);
     this._startClock();
     this._startVisual();
   }
@@ -385,8 +386,9 @@ export class MetronomeEngine {
     this._seq = items;
     this._seqEnded = false;
     this.running = true;
-    this._applyItem(0, this.ctx.currentTime + START_LEAD);
-    this._mute(false);
+    const t0 = this.ctx.currentTime + startLead(this.ctx);
+    this._applyItem(0, t0);
+    this._mute(false, t0);
     this._startClock();
     this._startVisual();
     return true;

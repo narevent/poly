@@ -10,7 +10,8 @@
    ============================================================ */
 
 import { playVoice, prepare, voiceLoad, VOICES, isVoice, resolveVoice } from '../../shared/voices.js';
-import { createContext, attach, ping, debugState as audioDebug } from '../../shared/audio-session.js';
+import { createContext, attach, ping, startLead, debugState as audioDebug } from '../../shared/audio-session.js';
+import { bindTransport, warmOnFirstGesture } from '../../shared/transport.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : (v > b ? b : v));
@@ -282,7 +283,11 @@ function start() {
 
   leadSec = sound.count ? cycleSec : 0;
   clockOffset = null; syncClock(); measureAutoLatency();
-  startTime = actx.currentTime + 0.18 + leadSec;
+  /* The lead is what the first note costs the player. It used to be a
+     flat 180 ms, which is audible as the exercise not starting when you
+     press it; it is now a render quantum or two, or the old figure only
+     when the context still has to wake up. See startLead(). */
+  startTime = actx.currentTime + startLead(actx) + leadSec;
   ensureEvents(0);
 
   if (leadSec > 0) {
@@ -883,7 +888,12 @@ updateStats();
 updateStatus();
 resize();
 
-$('playBtn').addEventListener('click', togglePlay);
+/* Start runs on finger-down rather than on the click that only arrives
+   when the finger lifts, and the audio context is built on the first
+   touch anywhere on the page instead of inside the press of start.
+   Both are latency the player hears as the exercise starting late. */
+bindTransport($('playBtn'), togglePlay);
+warmOnFirstGesture(ensureAudio);
 $('bpmUp').addEventListener('click', () => setBpm(bpm + (bpm >= 120 ? 5 : 2)));
 $('bpmDown').addEventListener('click', () => setBpm(bpm - (bpm > 120 ? 5 : 2)));
 /* dragging only repaints the readout; the grid is rebuilt once on release, so
