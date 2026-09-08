@@ -68,9 +68,16 @@ let watchdog = null;
 let hiddenTimer = null;
 
 /* How long a context may sit unwanted before we let the phone have its
-   audio session back. Long enough that pausing to change a setting does
-   not tear anything down, short enough that a backgrounded page is not
-   holding hardware. */
+   audio session back — and this is only ever considered for a page nobody
+   is looking at.
+
+   It used to apply to a visible page too, after eight seconds. That cost
+   exactly the thing this app is for: a suspended context has a frozen
+   clock and a parked audio route, so the next press of play had to wait
+   for resume() to land and for the route to wake before the first click
+   could sound, which is why the start lead used to be 180 ms. While the
+   page is on screen the context now stays running with its keep-alive
+   tone, so play is heard within a couple of frames of the press. */
 const IDLE_SUSPEND_MS = 8000;
 const HIDDEN_CLOSE_MS = 30000;
 
@@ -99,6 +106,7 @@ const KEEP_HZ = 30;
 const KEEP_GAIN = 0.0001;
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+const isHidden = () => (typeof document !== 'undefined' && document.hidden);
 
 /* A short ring of what the audio layer has been through, so a dropout on
    someone else's phone can be read back instead of guessed at. See the
@@ -285,14 +293,15 @@ function sweep() {
     if (!active) {
       e.stalls = 0;
       e.clockWall = 0;
-      /* Idle and running: hand the audio session back until it is wanted.
-         The keep-alive is torn down at exactly this moment and not a
-         moment sooner — while the context is merely stopped it keeps
-         holding the route awake, so pressing play again is instant.
-         Suspending would stop the tone anyway; doing it explicitly is
-         what makes it come back cleanly on the next ping. */
+      /* Idle, hidden and running: hand the audio session back until it is
+         wanted. The keep-alive is torn down at exactly this moment and
+         not a moment sooner — while the context is merely stopped and on
+         screen it keeps holding the route awake, which is what makes
+         pressing play instant. Suspending would stop the tone anyway;
+         doing it explicitly is what makes it come back cleanly on the
+         next ping. */
       if (ctx.state === 'running') {
-        if (now() - e.idleSince > IDLE_SUSPEND_MS) {
+        if (isHidden() && now() - e.idleSince > IDLE_SUSPEND_MS) {
           stopKeep(e);
           const p = ctx.suspend();
           if (p && p.catch) p.catch(() => {});
@@ -340,6 +349,39 @@ function sweep() {
     e.clockWall = w;
     e.clockAudio = a;
   }
+}
+
+/* ------------------------------------------------------------
+   how far ahead the first note has to be booked
+   ------------------------------------------------------------ */
+
+/* Web Audio renders in quanta of 128 frames, some way ahead of the clock
+   you can read. A source scheduled closer than that render-ahead is not
+   early, it is late: its attack has already been rendered as silence by
+   the time it is asked for, which on a two-millisecond click means the
+   whole click. So the first hit needs a lead — but only a couple of
+   quanta of one, not the fifth of a second this app used to take.
+
+   `baseLatency` is the browser telling us exactly how far ahead it
+   renders; three times it leaves room for one late scheduler pass on top.
+   Note this is NOT output latency: the DAC delay after rendering applies
+   to every note equally and is not something a lead can pay off (the
+   trainer measures it separately, to score taps against what was heard).
+
+   A context that is not running has a frozen clock and, on a phone, a
+   parked audio route. resume() is asynchronous, so `currentTime` at this
+   moment is a reading from before the gap — the lead has to cover the
+   wake-up as well, and that is the only case that still wants a long one. */
+const LEAD_MIN = 0.020;
+const LEAD_MAX = 0.060;
+const LEAD_COLD = 0.180;
+
+export function startLead(ctx) {
+  if (!ctx) return LEAD_COLD;
+  if (ctx.state !== 'running') return LEAD_COLD;
+  const base = (typeof ctx.baseLatency === 'number' && isFinite(ctx.baseLatency) && ctx.baseLatency > 0)
+    ? ctx.baseLatency : 0.006;
+  return Math.min(LEAD_MAX, Math.max(LEAD_MIN, base * 3));
 }
 
 /* For the console: what the session layer currently believes. */

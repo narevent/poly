@@ -41,6 +41,12 @@
   transition: transform .08s ease, box-shadow .2s ease, border-color .2s;
   box-shadow: var(--shadow);
   flex: 0 0 auto;
+  /* transport fires on pointerdown, so the button must never be part of a
+     scroll or a double-tap-to-zoom gesture the browser is still waiting to
+     disambiguate — and a long press must not raise a selection handle */
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .play-btn:hover { border-color: var(--accent); }
 .play-btn:active { transform: scale(.94); }
