@@ -11,7 +11,27 @@
    controls side by side.
    ============================================================ */
 
-:root { --app: var(--app-circles); }
+:root {
+  /* Poly's per-app signature hue. Redefining --accent is the whole
+     mechanism: components.css never knows which app it is in, it just
+     follows --accent, so the transport, the sliders, the focus rings and
+     the status line all become amber here. Without this circles wore the
+     metronome's blue on every shared control. */
+  --app: var(--app-circles);
+  --accent: #ffab6b;
+  --accent-2: #ff9a4d;
+  --accent-soft: rgba(255, 171, 107, .16);
+  --accent-ink: #2a1605;
+  --accent-lit: #ffe0c4;
+}
+
+/* ---------- shell ----------
+   The shared shell is a FOUR-row grid — topbar, control strip, work
+   surface, status — because both older apps have four children. Circles
+   has three, so the status bar landed in the `1fr` row and floated in
+   the middle of the screen with the page scrolling underneath it.
+   Three children, three rows. */
+.circles-shell { grid-template-rows: auto 1fr auto; }
 
 /* ---------- page column (mobile default) ---------- */
 .circles-main {
@@ -20,19 +40,36 @@
   display: flex;
   flex-direction: column;   /* stacked: stage above, controls below */
   gap: var(--s4);
-  padding: var(--s3);
+  /* no top padding: the stage sticks to `top: 0` of this box, and any gap
+     here is a strip the panels scroll through behind it */
+  padding: 0 var(--s1) var(--s3);
   width: 100%;
   max-width: 680px;         /* phone-first measure; wide screens centre it */
   margin: 0 auto;
+  /* the shell pins the topbar and the status line; this is the one row
+     that scrolls, so a phone can reach the sixth voice without the
+     transport leaving the screen */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ---------- stage ---------- */
 .stage-wrap {
   position: relative;
   flex: 0 0 auto;
-  width: 100%;
+  /* Square, and bounded by the SHORTER axis: on a phone the width is not
+     the constraint, the height is — a full-width square ate two thirds of
+     the screen and pushed every control below the fold. */
+  width: min(100%, 40dvh);
   aspect-ratio: 1 / 1;      /* a square, so the rings stay round on any phone */
-  max-height: 70vh;
+  margin: 0 auto;
+  /* Stays put while the controls scroll under it: on a phone you are
+     editing the rhythm you are watching, and a stage that scrolls away
+     turns every edit into a scroll back up to see what it did. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
   background:
@@ -97,15 +134,14 @@
   min-width: 0;                    /* never let rows force the page wider */
 }
 
-/* the voice list scrolls inside its panel, so the page never
-   blows out when a 5th or 6th voice is added */
+/* On a phone the voice list does NOT get a scroller of its own — the page
+   row is already scrolling, and a scroll area nested in a scroll area is
+   how you end up fighting the phone to reach the sixth voice. The wide
+   layout, where the sidebar is a fixed-height column, puts it back. */
 .voice-rows {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  max-height: 44vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding-right: 2px;
 }
 
@@ -269,7 +305,8 @@
 .status-sep { color: var(--muted-2); opacity: .5; }
 
 /* compact button for the rows header */
-.btn-sm { min-height: 30px; padding: 0 var(--s3); font-size: 12.5px; }
+.btn-sm { min-height: 32px; padding: 0 var(--s3); font-size: 12.5px; }
+.btn:disabled { opacity: .4; cursor: default; }
 
 .chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .chip {
@@ -297,10 +334,17 @@
     max-height: none;
     aspect-ratio: auto;
     min-height: 420px;
+    position: relative;   /* side by side: nothing scrolls past it */
+    margin: 0;
   }
   .side {
     width: 340px; flex: 0 0 340px;
     overflow-y: auto;
+  }
+  .voice-rows {
+    max-height: 44vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   /* the voice card keeps its two columns; column B gets the larger share
      because its sliders need travel — tags sit above them, not beside */
@@ -308,15 +352,31 @@
   .vcol { gap: var(--s3); }
 }
 
-/* ---------- very narrow phones: stack the two columns ---------- */
-@media (max-width: 419px) {
-  .voice-row { grid-template-columns: 14px 1fr; }
-  .vcol-a { grid-column: 2; }
-  .vcol-b { grid-column: 2; }
+/* ---------- phones: one column per voice ----------
+   Two side-by-side columns inside a 375-430px card left the sound picker
+   and both sliders about 150px wide — narrow enough that the pitch slider
+   had no useful travel. So the card becomes one column, and the pieces
+   that DO fit side by side (the sound and its subdivision) share a line
+   instead of costing two. */
+@media (max-width: 559px) {
+  .voice-row {
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: var(--s2) var(--s3);
+    padding: var(--s3);
+  }
+  .vcol-a, .vcol-b { grid-column: 2; }
   .swatch { grid-column: 1; }
+
+  /* sound picker and stepper on one line, the picker taking the slack */
+  .vcol-a { flex-direction: row; align-items: center; gap: var(--s2); }
+  .vcol-a .vsound { flex: 1 1 auto; min-width: 0; min-height: 40px; }
+  .vcol-a .stepper { flex: 0 0 auto; }
+
+  /* the sliders get the full card width, which is the point of stacking */
+  .vcol-b { gap: var(--s3); }
 }
 
-/* ---------- short phones: let the stage shrink ---------- */
+/* ---------- short phones: let the stage shrink further ---------- */
 @media (max-height: 620px) {
-  .stage-wrap { aspect-ratio: auto; height: 62vw; max-height: 46vh; }
+  .stage-wrap { width: min(100%, 34dvh); }
 }
