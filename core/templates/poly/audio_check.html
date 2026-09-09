@@ -1,0 +1,89 @@
+{% extends 'poly/base.html' %}
+{% load static %}
+
+{% block title %}Poly — Audio check{% endblock %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'poly/shared/components.css' %}" />
+  <style>
+    .check-main { padding: var(--s3); display: flex; flex-direction: column; gap: var(--s3);
+                  overflow-y: auto; min-height: 0; }
+    .check-main h2 { font-size: 10.5px; font-weight: 600; letter-spacing: .7px;
+                     text-transform: uppercase; color: var(--muted-2); margin-bottom: var(--s2); }
+    .panel { padding: var(--s3); }
+    .big { min-height: 56px; width: 100%; font-size: 15px; }
+    .rows { font-family: var(--mono); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .row { display: flex; justify-content: space-between; gap: var(--s3); }
+    .row span:first-child { color: var(--muted-2); }
+    .row span:last-child { color: var(--text); text-align: right; word-break: break-word; }
+    .v-good { color: var(--good) !important; }
+    .v-bad  { color: var(--danger) !important; }
+    .v-warn { color: var(--warn) !important; }
+    .hint { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .verdict { font-size: 13.5px; line-height: 1.5; border-radius: var(--radius-sm);
+               padding: var(--s3); border: 1px solid var(--line); background: var(--card-2); }
+    .yn { display: flex; gap: var(--s2); }
+    .yn .btn { flex: 1 1 0; }
+    pre.log { font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+              white-space: pre-wrap; word-break: break-word; margin: 0;
+              max-height: 34vh; overflow: auto; }
+  </style>
+{% endblock %}
+
+{% block body %}
+  <div id="app" class="app-shell" style="grid-template-rows: auto 1fr auto;">
+    <header class="topbar">
+      <a class="brand" href="{% url 'hub' %}" title="Back to Poly">
+        <span class="logo">●</span>
+        <span class="brand-name">Poly</span>
+        <span class="brand-sub">audio check</span>
+      </a>
+    </header>
+
+    <main class="check-main">
+      <div class="panel">
+        <p class="hint">
+          This measures what the audio engine actually produces and compares it
+          with what you can hear. If the meter reads a full signal and you hear
+          nothing, the app is fine and the phone is silencing it — which is a
+          different bug with a different fix.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2>Step 1 — tap, then listen</h2>
+        <button id="toneBtn" class="btn btn-primary big">Play a two-second tone</button>
+        <div id="ask" class="yn" hidden style="margin-top: var(--s3)">
+          <button id="heardYes" class="btn btn-ghost">I heard it</button>
+          <button id="heardNo" class="btn btn-ghost">I heard nothing</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Step 2 — the real click path</h2>
+        <button id="clickBtn" class="btn btn-ghost big">Play eight metronome clicks</button>
+      </div>
+
+      <div id="verdictBox" class="verdict" hidden></div>
+
+      <div class="panel">
+        <h2>Measured</h2>
+        <div id="rows" class="rows"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Session log</h2>
+        <pre id="log" class="log">—</pre>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="statusPos">ready</span>
+      <span class="status-right"><span id="statusRight"></span></span>
+    </footer>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'poly/shared/audio-check.js' %}"></script>
+{% endblock %}

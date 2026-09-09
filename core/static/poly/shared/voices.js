@@ -330,9 +330,33 @@ export const isVoice = id => VALID.has(resolveVoice(id));
    no cost on the audio thread, because picking from an array is free.
    Voices with no noise in them render identically every time, and the
    duplicates are dropped rather than kept and never told apart. */
-const rendered = new WeakMap();
-const rendering = new WeakMap();
+/* Keyed by SAMPLE RATE, not by context.
+
+   It used to be per context, on the reasoning that a buffer has to be at
+   that context's rate — true, but the rate is the only thing that matters,
+   and an AudioBuffer can be played by any context sharing it. Keying by
+   context meant every rebuilt context, and every navigation between
+   Poly's four pages, re-rendered the whole set: 5 voices x 3
+   articulations x 3 variants = 45 OfflineAudioContexts, all constructed
+   at once, every time.
+
+   That is the exact failure audio-session.js's own header warns about,
+   arriving from the other direction. WebKit caps how many audio contexts
+   a process may hold, an OfflineAudioContext counts against that cap, and
+   past it a context is handed back as an object that never makes a sound.
+   Forty-five at a time, per page, on a phone, is not a cache warm-up; it
+   is a way to exhaust the media daemon before the first click.
+
+   So: rendered once per rate for the life of the page, and rendered a few
+   at a time rather than all at once. */
+const rendered = new Map();     // sampleRate -> Map(key -> AudioBuffer[])
+const rendering = new Map();    // sampleRate -> Promise
 const VARIANTS = 3;
+
+/* How many offline renders may be in flight together. Three is enough to
+   keep the work off the critical path and few enough that a phone is never
+   asked for a pile of audio contexts it does not have. */
+const RENDER_CONCURRENCY = 3;
 
 /* Two renders of the same sound, sample for sample. */
 function sameBuffer(a, b) {
@@ -356,34 +380,46 @@ function renderOne(sampleRate, id, art) {
   return new Promise(res => { off.oncomplete = e => res(e.renderedBuffer); });
 }
 
-/* Render every voice and articulation for this context. Cheap — fifteen
-   buffers, none longer than 0.8 s — and done once, off the audio path.
-   Safe to call repeatedly; the second call gets the first one's promise. */
+/* Render every voice and articulation at this context's sample rate.
+   Cheap — forty-five buffers, none longer than 0.8 s — done once per rate,
+   off the audio path, a few renders at a time. Safe to call repeatedly:
+   the second call gets the first one's promise. */
 export function prepare(ctx) {
   if (!ctx || !OfflineCtx) return Promise.resolve(false);
-  const started = rendering.get(ctx);
+  const rate = ctx.sampleRate;
+  const started = rendering.get(rate);
   if (started) return started;
 
-  const store = new Map();
-  rendered.set(ctx, store);
+  let store = rendered.get(rate);
+  if (!store) { store = new Map(); rendered.set(rate, store); }
+
+  /* the whole job list, as thunks — nothing is constructed until a worker
+     reaches it, which is what keeps the live context count down */
   const jobs = [];
   for (const v of VOICES) {
     for (const art of ['accent', 'normal', 'ghost']) {
-      const takes = [];
-      for (let i = 0; i < VARIANTS; i++) takes.push(renderOne(ctx.sampleRate, v.id, art));
-      jobs.push(
-        Promise.all(takes)
-          .then(bufs => {
-            // a voice with no noise in it renders the same every time
-            const varied = bufs.filter((b, i) => i === 0 || !sameBuffer(b, bufs[0]));
-            store.set(v.id + '|' + art, varied.length ? varied : [bufs[0]]);
-          })
-          .catch(() => { /* that one voice stays on the live path */ })
-      );
+      jobs.push(async () => {
+        const bufs = [];
+        for (let i = 0; i < VARIANTS; i++) bufs.push(await renderOne(rate, v.id, art));
+        // a voice with no noise in it renders the same every time
+        const varied = bufs.filter((b, i) => i === 0 || !sameBuffer(b, bufs[0]));
+        store.set(v.id + '|' + art, varied.length ? varied : [bufs[0]]);
+      });
     }
   }
-  const done = Promise.all(jobs).then(() => true);
-  rendering.set(ctx, done);
+
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const job = jobs[next++];
+      try { await job(); } catch (e) { /* that one voice stays on the live path */ }
+    }
+  };
+  const done = Promise.all(
+    Array.from({ length: RENDER_CONCURRENCY }, worker)
+  ).then(() => true);
+
+  rendering.set(rate, done);
   return done;
 }
 
@@ -415,7 +451,7 @@ export function playVoice(ctx, dest, time, voiceId, art, gain = 1, pitchOffset =
   const a = (art === 'accent' || art === 'ghost') ? art : 'normal';
   if (gain <= 0.0005) return;
 
-  const store = rendered.get(ctx);
+  const store = rendered.get(ctx.sampleRate);
   const takes = store && store.get(id + '|' + a);
   const buf = takes && (takes.length === 1 ? takes[0] : takes[(Math.random() * takes.length) | 0]);
   if (!buf) {

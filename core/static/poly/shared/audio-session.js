@@ -118,6 +118,96 @@ function note(kind, detail) {
 }
 
 /* ------------------------------------------------------------
+   the audio session CATEGORY
+   ------------------------------------------------------------ */
+
+/* THE BUG THIS EXISTS FOR — the one that took all three apps down at once.
+
+   Everything above is about keeping a context alive. None of it helps if
+   the operating system has decided this page's audio is the kind you do
+   not need to hear.
+
+   On iOS, Web Audio starts in the `ambient` audio session category, and
+   ambient audio is SILENCED BY THE RING/SILENT SWITCH. The context is
+   running, currentTime advances, the scheduler schedules, every node
+   renders a full-scale signal, the animation is perfect — and the speaker
+   is told to stay quiet. It is indistinguishable from a broken app from
+   the inside, which is why none of the machinery above ever caught it:
+   there is nothing wrong to catch. It is also why it never happens on a
+   laptop, which has no such switch, and why it can differ between two
+   phones and come and go over a day.
+
+   A metronome is not ambient audio. It is the thing the user came for, so
+   it belongs in the `playback` category, which ignores the silent switch —
+   the same category a music app uses.
+
+   Two ways to ask, because the good one is recent:
+
+     - navigator.audioSession.type (Safari 16.4+, and the standards-track
+       answer). One assignment, no media element, no cost.
+     - a looping silent media element, for anything older. Playing an
+       HTMLAudioElement is what promotes the process's session category,
+       and the element has to keep playing to hold it. Silence at zero
+       volume costs nothing audible and nothing measurable.
+
+   Re-asserted on every gesture and on becoming visible, because the
+   category is process-wide and another tab, or an interruption, can put
+   it back. */
+
+let silentEl = null;
+
+function silentLoopUrl() {
+  /* A tenth of a second of digital silence as a WAV, built here rather
+     than pasted in as a base64 blob so it stays readable. */
+  const rate = 8000, frames = rate / 10;
+  const buf = new ArrayBuffer(44 + frames * 2);
+  const view = new DataView(buf);
+  const ascii = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  ascii(0, 'RIFF'); view.setUint32(4, 36 + frames * 2, true); ascii(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  ascii(36, 'data'); view.setUint32(40, frames * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+function primeSilentElement() {
+  if (silentEl || typeof Audio === 'undefined') return;
+  try {
+    silentEl = new Audio(silentLoopUrl());
+    silentEl.loop = true;
+    silentEl.volume = 0;          // it is here for the category, not the sound
+    silentEl.setAttribute('playsinline', '');
+    silentEl.preload = 'auto';
+  } catch (e) { note('silent-el-failed', String(e)); silentEl = null; }
+}
+
+/* Claim the playback category. Cheap and idempotent, so it is safe to call
+   from every gesture — which is what makes it stick, because a gesture is
+   also the only moment iOS will let a media element start. */
+export function claimPlayback() {
+  try {
+    const s = (typeof navigator !== 'undefined') && navigator.audioSession;
+    if (s) {
+      if (s.type !== 'playback') { s.type = 'playback'; note('session-type', s.type); }
+      return;                     // the modern path needs no element at all
+    }
+  } catch (e) { note('session-type-failed', String(e)); }
+
+  primeSilentElement();
+  if (silentEl && silentEl.paused) {
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => { /* no gesture yet; the next one retries */ });
+  }
+}
+
+/* Let it go when nothing wants sound any more, so a page sitting idle is
+   not holding the phone's session open. */
+function releasePlayback() {
+  if (silentEl && !silentEl.paused) { try { silentEl.pause(); } catch (e) {} }
+}
+
+/* ------------------------------------------------------------
    creating
    ------------------------------------------------------------ */
 
@@ -127,6 +217,8 @@ export function createContext(options = { latencyHint: 'interactive' }) {
   const AC = (typeof AudioContext !== 'undefined') ? AudioContext
            : (typeof webkitAudioContext !== 'undefined') ? webkitAudioContext : null;
   if (!AC) return null;
+  /* before the context exists, so it is born into the right category */
+  claimPlayback();
   try { return new AC(options); } catch (e) { return new AC(); }
 }
 
@@ -203,6 +295,9 @@ function stopKeep(e) {
 export function ping(ctx) {
   const e = entries.get(ctx);
   if (!ctx || ctx.state === 'closed') return;
+  /* A gesture is the only moment iOS accepts either of these, and both are
+     idempotent, so they ride together. */
+  claimPlayback();
   const t = now();
   if (ctx.state !== 'running') {
     if (!e || t - e.lastResume > RESUME_THROTTLE_MS) {
@@ -228,6 +323,7 @@ function pingAll() { for (const ctx of entries.keys()) ping(ctx); }
 function release(e, reason) {
   note('release', reason);
   entries.delete(e.ctx);
+  if (!entries.size) releasePlayback();
   stopKeep(e);
   try { e.ctx.onstatechange = null; } catch (err) { /* closing */ }
   try { e.ctx.close(); } catch (err) { /* already closing */ }
