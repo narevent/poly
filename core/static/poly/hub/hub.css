@@ -195,3 +195,9 @@
 @media (hover: none) {
   .card-go { color: var(--hue); }
 }
+
+/* A way back from silence. The audio check is a diagnostic, not an app, so
+   it sits in the footer rather than taking a card. */
+.hub-foot a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.hub-foot a:hover { color: var(--accent); }
+.hub-sep { opacity: .4; margin: 0 6px; }

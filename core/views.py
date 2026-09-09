@@ -17,3 +17,10 @@ class TrainerView(TemplateView):
 
 class CirclesView(TemplateView):
     template_name = 'poly/circles.html'
+
+
+class AudioCheckView(TemplateView):
+    """A diagnostic page: measures what the audio graph actually renders, so a
+    dropout on someone else's phone can be read rather than guessed at."""
+
+    template_name = 'poly/audio_check.html'
