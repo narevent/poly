@@ -388,6 +388,21 @@
 .toast.good { border-color: rgba(95, 227, 161, .5); color: var(--good); }
 .toast.bad { border-color: rgba(255, 107, 129, .45); color: var(--danger); }
 
+/* ---------- Voice pitch sliders ----------
+   Same shared .slider chrome; sit tight under their voice pickers and
+   tint to the voice's colour so the mapping reads without labels. */
+.pitch-slider { width: 100%; margin-top: 2px; }
+.pitch-slider::-webkit-slider-runnable-track { background: var(--line-soft); }
+.pitch-slider::-moz-range-track { background: var(--line-soft); }
+/* the small caption that names the slider ("pitch") */
+.field-sub {
+  display: block;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: .7px; text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 6px 0 2px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
   .ctrl-bar { gap: var(--s2) var(--s3); padding: var(--s2); }

@@ -425,7 +425,32 @@ function renderLayerRow(layer, idx) {
     volInput.title = volTitle(layer.volume);
     persist(); buildEngineLayers();
   });
-  ctrls.appendChild(volInput);
+  const volWrap = el('label', 'knob');
+  volWrap.append(el('span', 'knob-tag', 'vol'), volInput);
+
+  /* pitch, in semitones — lets layers that share a sound be told apart
+     by ear; the engine already threads this into every hit */
+  const pitchInput = el('input', 'pitch-slider');
+  pitchInput.type = 'range'; pitchInput.min = -12; pitchInput.max = 12; pitchInput.step = 1;
+  pitchInput.value = layer.pitchOffset ?? 0;
+  const pitchTitle = n => {
+    const v = VOICES.find(x => x.id === layer.sound);
+    const name = v ? v.name : 'sound';
+    return n === 0
+      ? `Pitch — at ${name}'s own pitch`
+      : `Pitch — ${n > 0 ? '+' : ''}${n} semitones above ${name}'s own pitch`;
+  };
+  pitchInput.title = pitchTitle(layer.pitchOffset ?? 0);
+  pitchInput.setAttribute('aria-label', 'Layer pitch in semitones');
+  pitchInput.addEventListener('input', () => {
+    layer.pitchOffset = parseInt(pitchInput.value, 10);
+    pitchInput.title = pitchTitle(layer.pitchOffset);
+    persist(); buildEngineLayers();
+  });
+  const pitchWrap = el('label', 'knob knob-pitch');
+  pitchWrap.append(el('span', 'knob-tag', 'pitch'), pitchInput);
+
+  ctrls.append(volWrap, pitchWrap);
   rail.appendChild(ctrls);
 
   const del = btn('icon-btn danger layer-del', '×', 'Delete layer', () => {

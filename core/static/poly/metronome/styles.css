@@ -189,10 +189,31 @@
   white-space: nowrap;
 }
 
-/* Sound · volume group. `display: contents` makes the wrapper vanish
-   from layout, so on wide screens these sit directly in the rail exactly as
-   if they were not wrapped at all. Phones re-materialise it as its own row. */
-.layer-controls { display: contents; }
+/* Sound · volume group. A real flex row holding the sound select and the
+   two captioned knobs; phones re-wrap it as a full-width row. */
+/* Volume and pitch are two identical-looking ranges, so each one is a
+   labelled "knob": a small caption above its own slider. The wrapper is a
+   real flex row (NOT display:contents) — flattening it made the two knobs
+   siblings of the whole rail, where their min-widths overflowed the rail
+   column and painted over the beat grid. */
+.layer-controls {
+  display: flex; align-items: flex-end;
+  gap: var(--s2);
+  flex: 1 1 auto; min-width: 0;
+}
+/* each knob shrinks with the line and keeps its caption attached */
+.knob {
+  display: flex; flex-direction: column;
+  gap: 2px; min-width: 0; flex: 1 1 64px;
+}
+.knob-tag {
+  font-size: 9px; font-weight: 600;
+  letter-spacing: .7px; text-transform: uppercase;
+  color: var(--muted-2);
+  line-height: 1;
+}
+/* sliders fill their knob and may shrink below their old hard minimum */
+.knob .vol-slider, .knob .pitch-slider { width: 100%; min-width: 0; flex: none; }
 
 /* Voice picker — same quiet weight as the layer BPM field, so the
    pattern still owns the row. */
@@ -235,22 +256,55 @@
   height: 20px; background: transparent;
   padding: 0; cursor: pointer; min-height: 0; border: 0;
 }
-.vol-slider::-webkit-slider-runnable-track {
+
+/* the pitch slider shares volume's base shape (same size thumb, same
+   flex behaviour) and only differs in thumb colour — so the two knobs
+   sit evenly instead of one flexing and the other not */
+.pitch-slider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1 1 72px; width: auto; min-width: 64px;
+  height: 20px; background: transparent;
+  padding: 0; cursor: pointer; min-height: 0; border: 0;
+}
+.pitch-slider::-webkit-slider-runnable-track {
   height: 4px; border-radius: 4px; background: var(--line);
 }
-.vol-slider::-webkit-slider-thumb {
+/* Volume and pitch share one geometry: the grouped selectors below give
+   both the same 4px track and 14px thumb; the tint rules further down only
+   change colour, so the two knobs are identical apart from their hue. */
+.vol-slider::-webkit-slider-runnable-track,
+.pitch-slider::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 4px; background: var(--line);
+}
+.vol-slider::-webkit-slider-thumb,
+.pitch-slider::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--muted); cursor: pointer; border: 0;
+  cursor: pointer; border: 0;
   margin-top: -5px;                 /* centres the thumb on the 4px track */
   transition: background .15s;
 }
+.vol-slider::-webkit-slider-thumb { background: var(--muted); }
 .vol-slider:hover::-webkit-slider-thumb { background: var(--accent); }
-.vol-slider::-moz-range-track { height: 4px; border-radius: 4px; background: var(--line); }
-.vol-slider::-moz-range-thumb {
+.vol-slider::-moz-range-track,
+.pitch-slider::-moz-range-track { height: 4px; border-radius: 4px; background: var(--line); }
+.vol-slider::-moz-range-thumb,
+.pitch-slider::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%;
-  background: var(--muted); cursor: pointer; border: 0;
+  cursor: pointer; border: 0;
 }
+.vol-slider::-moz-range-thumb { background: var(--muted); }
 .vol-slider:hover::-moz-range-thumb { background: var(--accent); }
+
+/* ---------- Knob = captioned slider (base geometry lives with
+   .layer-controls above; this block only tints the pitch knob) ---------- */
+/* Pitch shares volume's exact thumb geometry via the grouped selector
+   below; these rules only tint it with the app hue so the two knobs read
+   as the same control with different jobs. */
+.pitch-slider::-webkit-slider-thumb { background: var(--app); }
+.pitch-slider:hover::-webkit-slider-thumb { background: var(--app); }
+.pitch-slider::-moz-range-thumb { background: var(--app); }
+.pitch-slider:hover::-moz-range-thumb { background: var(--app); }
+.knob-pitch .knob-tag { color: var(--app); }   /* pitch reads as the app hue */
 
 /* Beat track — beats laid out along time.
    Every beat is an equal flex share and the dials scale to fit, so the bar
@@ -593,7 +647,6 @@
   .leg-sw { width: 10px; height: 10px; border-radius: 3px; }
 
   .layer-meta { gap: var(--s3); }
-  .vol-slider { width: 64px; }
   .view-sub { display: none; }
   .part-acts { margin-left: 0; }
   .savebar .btn { flex: 1 1 auto; }
@@ -663,11 +716,15 @@
   .layer-rail { flex-wrap: wrap; row-gap: var(--s1); }
   .layer-del { order: 4; }
   .layer-controls {
-    order: 5; display: flex; align-items: center;
-    flex: 1 1 100%; gap: var(--s2); min-width: 0;
+    order: 5; flex: 1 1 100%;
+    flex-wrap: wrap; gap: var(--s2);
   }
-  .layer-sound { flex: 1 1 auto; width: auto; }
-  .vol-slider { flex: 1 1 64px; width: auto; }
+  /* the sound select gets a line, the two captioned knobs share the next:
+     two equal columns that can never collide, whatever the phone width */
+  .layer-sound { flex: 1 1 100%; min-width: 0; }
+  .knob { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .knob .vol-slider, .knob .pitch-slider { width: 100%; min-width: 0; }
+  .layer-meta .pill { min-width: 30px; }
   /* keep a part to two compact rows instead of three tall ones */
   .part-body { row-gap: var(--s2); padding: var(--s2) var(--s3); }
   .part-repeat { flex-direction: row; align-items: center; gap: var(--s2); }
@@ -745,7 +802,8 @@
   .layer-row .layer-sound { width: 78px; }
   /* the rail's spare width goes to volume, which is the one control here you
      set by eye rather than by click */
-  .layer-row .vol-slider { min-width: 96px; }
+  .layer-row .layer-controls { gap: var(--s3); }
+  .layer-row .knob { flex: 1 1 96px; }
   /* explicit gap, so delete reads as the layer's own action and not as the
      right-hand end of the slider it used to sit flush against */
   .layer-row .layer-del { margin-left: var(--s3); }

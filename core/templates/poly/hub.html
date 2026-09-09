@@ -11,7 +11,7 @@
       <span class="logo">●</span>
       <span class="brand-name">Poly</span>
     </div>
-    <p class="hub-tagline">Two ways to work on time.</p>
+    <p class="hub-tagline">Three ways to work on time.</p>
   </header>
 
   <nav class="hub-grid" aria-label="Apps">
@@ -92,14 +92,52 @@
       <span class="card-go" aria-hidden="true">→</span>
     </a>
 
+    <a class="app-card card-circles" href="{% url 'circles' %}" data-key="3">
+      <div class="card-art">
+        <!-- Two outlined rings, 3 against 5, with a playhead at 12 o'clock:
+             the circles app's stage, in miniature. The rings don't spin —
+             the playhead sweeps. -->
+        <svg viewBox="0 0 160 90" aria-hidden="true">
+          <g class="cc-wrap">
+            <!-- 3-ring: dots at 12 / 4 / 8 o'clock -->
+            <circle class="cc-ring" cx="55" cy="45" r="26" />
+            <g class="cc-dots r3">
+              <circle class="cc-head" cx="55" cy="19" r="5" />
+              <circle cx="77.5" cy="58" r="4" />
+              <circle cx="32.5" cy="58" r="4" />
+            </g>
+            <!-- 5-ring: dots every 72° -->
+            <circle class="cc-ring" cx="115" cy="45" r="26" />
+            <g class="cc-dots r5">
+              <circle class="cc-head" cx="115" cy="19" r="5" />
+              <circle cx="139.7" cy="36.9" r="4" />
+              <circle cx="130.5" cy="65.1" r="4" />
+              <circle cx="99.5" cy="65.1" r="4" />
+              <circle cx="90.3" cy="36.9" r="4" />
+            </g>
+            <!-- playhead, hand + tip, mid-sweep -->
+            <g class="cc-play">
+              <line x1="55" y1="45" x2="55" y2="19" />
+              <circle class="cc-tip" cx="55" cy="19" r="3.4" />
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="card-text">
+        <h2>Circles</h2>
+        <p>One playhead, one cycle, a ring per voice. Watch where the beats land.</p>
+      </div>
+      <span class="card-go" aria-hidden="true">→</span>
+    </a>
+
   </nav>
 
-  <p class="hub-foot">Press <kbd>1</kbd> or <kbd>2</kbd> to open</p>
+  <p class="hub-foot">Press <kbd>1</kbd>, <kbd>2</kbd> or <kbd>3</kbd> to open</p>
 </main>
 
 <script>
   /* Number keys open an app — the hub is a launcher, so it should answer
-     the keyboard as directly as the two apps behind it do. */
+     the keyboard as directly as the apps behind it do. */
   document.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var card = document.querySelector('.app-card[data-key="' + e.key + '"]');
