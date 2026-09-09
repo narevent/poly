@@ -1,0 +1,322 @@
+/* ============================================================
+   Poly Circles — styles (mobile-first)
+   Shell, topbar, play button, panels, buttons, inputs and the
+   status bar come from shared/components.css; tokens come from
+   shared/tokens.css. This file adds only what circles needs:
+   the canvas stage, the voice rows, the preset chips.
+
+   The layout is written MOBILE-FIRST: one column, stage first
+   (it is the app), controls beneath it, everything reachable
+   with a thumb. Wider screens simply place the stage and the
+   controls side by side.
+   ============================================================ */
+
+:root { --app: var(--app-circles); }
+
+/* ---------- page column (mobile default) ---------- */
+.circles-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;   /* stacked: stage above, controls below */
+  gap: var(--s4);
+  padding: var(--s3);
+  width: 100%;
+  max-width: 680px;         /* phone-first measure; wide screens centre it */
+  margin: 0 auto;
+}
+
+/* ---------- stage ---------- */
+.stage-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 1 / 1;      /* a square, so the rings stay round on any phone */
+  max-height: 70vh;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 171, 107, .07), transparent 62%),
+    linear-gradient(180deg, var(--card), var(--bg-soft));
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  touch-action: manipulation;
+}
+#stage {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+
+/* corner legend: colour → pulse count → sound */
+.stage-legend {
+  position: absolute; top: var(--s2); left: var(--s2);
+  display: flex; flex-direction: column; gap: 6px;
+  pointer-events: none;
+}
+.stage-legend .leg-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--muted);
+  letter-spacing: .2px;
+}
+.stage-legend .leg-sw {
+  width: 11px; height: 11px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,.16);
+  flex: 0 0 auto;
+}
+
+/* the ratio, faint, behind the rings */
+.stage-centre {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  pointer-events: none;
+}
+.ratio-badge {
+  font-family: var(--mono);
+  font-size: clamp(20px, 6vw, 30px);
+  font-weight: 700; letter-spacing: 2px;
+  color: var(--text); opacity: .13;
+  text-align: center;
+}
+
+/* one-cycle length, so tempo has a physical meaning */
+#cycleInfo {
+  position: absolute; bottom: var(--s2); right: var(--s2);
+  font-family: var(--mono); font-size: 10.5px;
+  color: var(--muted-2);
+  pointer-events: none;
+}
+
+/* ---------- panels ---------- */
+.side {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;                    /* never let rows force the page wider */
+}
+
+/* the voice list scrolls inside its panel, so the page never
+   blows out when a 5th or 6th voice is added */
+.voice-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  max-height: 44vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.rows-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s2);
+}
+
+/* ---------- panels ---------- */
+.panel {
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+.panel .rows-head { margin-bottom: 0; }
+.panel h2 {
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: .7px; text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* ---------- tempo panel ---------- */
+.tempo-panel { display: flex; flex-direction: column; gap: var(--s2); }
+.bpm-slider { width: 100%; accent-color: var(--app); }
+.bpm-scale {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: var(--muted-2); letter-spacing: .4px;
+}
+/* the readout is typeable — show it */
+.tempo-readout #bpmReadout {
+  min-width: 3ch; text-align: right;
+  border-bottom: 1px dashed var(--line);
+  padding: 0 2px 1px;
+  cursor: text;
+}
+.tempo-readout #bpmReadout:focus {
+  outline: none;
+  border-bottom-color: var(--app);
+  color: var(--app);
+}
+
+/* ---------- voice rows (thumb-sized on phones) ---------- */
+.voice-rows { display: flex; flex-direction: column; gap: var(--s2); }
+
+.voice-row {
+  display: grid;
+  /* swatch · column A (identity) · column B (mix) */
+  grid-template-columns: 14px minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: var(--s3);
+  align-items: start;
+  background: var(--card-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--s2) var(--s3);
+}
+.voice-row.is-muted { opacity: .5; }
+
+/* ---------- column A: identity — sound, then subdivision ---------- */
+.vcol {
+  display: flex; flex-direction: column;
+  gap: var(--s2); min-width: 0;
+}
+.vcol-a { grid-column: 2; }
+
+/* ---------- column B: mix — buttons, pitch, volume ---------- */
+.vcol-b { grid-column: 3; }
+
+/* pills row: three equal buttons, thumb-sized */
+.vpills {
+  display: flex; gap: var(--s1);
+}
+.vpills .pill { flex: 1 1 0; }
+
+.swatch {
+  grid-column: 1; width: 13px; height: 13px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.16);
+  margin-top: 10px;   /* aligns with the first row of column A */
+}
+
+/* subdivision stepper: − · count · + */
+.stepper { display: flex; align-items: center; gap: var(--s2); }
+.stepper .step {
+  width: 40px; height: 40px; border-radius: 12px;   /* thumb-sized */
+  background: var(--card); border: 1px solid var(--line);
+  color: var(--text); font-size: 18px; line-height: 1; cursor: pointer;
+  transition: border-color .15s, color .15s, transform .08s;
+}
+.stepper .step:hover { border-color: var(--app); color: var(--app); }
+.stepper .step:active { transform: scale(.94); background: var(--accent-soft); }
+.vpulse {
+  font-family: var(--mono); font-size: 21px; font-weight: 700;
+  color: var(--text); min-width: 2.6ch; text-align: center;
+}
+
+/* sound picker */
+.vsound {
+  width: 100%;
+  background: var(--card); border: 1px solid var(--line); color: var(--text);
+  min-height: 34px; border-radius: var(--radius-xs);
+  font-size: 13px; padding: 0 var(--s2);
+}
+.vlevel { width: 100%; accent-color: var(--app); }
+
+/* captioned slider row: tag · slider · live readout — the same shape
+   for pitch and volume, so both knobs read identically */
+.vpitch-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 2px var(--s2);
+  min-width: 0;
+}
+.vpitch-tag {
+  font-size: 9.5px; font-weight: 600;
+  letter-spacing: .7px; text-transform: uppercase;
+  color: var(--muted-2);
+}
+.vpitch-out {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+.vpitch-row .slider { grid-column: 1 / -1; width: 100%; }
+
+/* bipolar pitch slider: a notch at the exact centre (0 semitones) so the
+   "no shift" position reads at a glance — level is unipolar and gets none */
+.vpitch-bipolar { position: relative; }
+.vpitch-bipolar .slider::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 2px; height: 10px;
+  transform: translate(-50%, -50%);
+  background: var(--muted-2);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.pill {
+  flex: 1 1 0; min-width: 40px; min-height: 34px; padding: 0 var(--s2);
+  background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  border-radius: var(--radius-xs); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.pill:hover { color: var(--text); }
+.pill.is-on { color: var(--app); border-color: var(--app); background: var(--accent-soft); }
+.pill-x:hover { color: var(--danger); border-color: var(--danger); }
+.pill:disabled { opacity: .35; cursor: default; }
+
+/* ---------- presets ---------- */
+/* ---------- Status bar contents (the shared sheet styles the bar
+   itself and the right-hand cluster; these are the text pieces) ---------- */
+.status-pos { color: var(--muted-2); font-size: 11.5px; letter-spacing: .5px; }
+.status-pos.is-on { color: var(--app); }
+.status-ratio { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.status-bpm { font-family: var(--mono); font-size: 11.5px; color: var(--muted-2); }
+.status-sep { color: var(--muted-2); opacity: .5; }
+
+/* compact button for the rows header */
+.btn-sm { min-height: 30px; padding: 0 var(--s3); font-size: 12.5px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.chip {
+  min-height: 40px; padding: 0 var(--s3);        /* thumb-sized tap target */
+  background: var(--card-2); border: 1px solid var(--line);
+  color: var(--muted); border-radius: 999px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.chip:hover { color: var(--app); border-color: var(--app); background: var(--accent-soft); }
+.chip:active { background: var(--accent-soft); }
+
+/* ---------- wide screens: stage and controls side by side ---------- */
+@media (min-width: 720px) {
+  .circles-main {
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--s4);
+    padding: var(--s4);
+    max-width: 1100px;
+  }
+  .stage-wrap {
+    flex: 1 1 auto;
+    width: auto;
+    max-height: none;
+    aspect-ratio: auto;
+    min-height: 420px;
+  }
+  .side {
+    width: 340px; flex: 0 0 340px;
+    overflow-y: auto;
+  }
+  /* the voice card keeps its two columns; column B gets the larger share
+     because its sliders need travel — tags sit above them, not beside */
+  .voice-row { grid-template-columns: 14px minmax(0, 0.8fr) minmax(0, 1.2fr); }
+  .vcol { gap: var(--s3); }
+}
+
+/* ---------- very narrow phones: stack the two columns ---------- */
+@media (max-width: 419px) {
+  .voice-row { grid-template-columns: 14px 1fr; }
+  .vcol-a { grid-column: 2; }
+  .vcol-b { grid-column: 2; }
+  .swatch { grid-column: 1; }
+}
+
+/* ---------- short phones: let the stage shrink ---------- */
+@media (max-height: 620px) {
+  .stage-wrap { aspect-ratio: auto; height: 62vw; max-height: 46vh; }
+}

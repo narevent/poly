@@ -64,10 +64,11 @@
 }
 /* Each card wears the hue of the app behind it — the same hue that app's own
    brand dot and controls use once you are inside it. It is the hub's half of
-   the answer to "which one am I in": you pick blue or violet here, and the
-   screen you land on is still blue or violet. */
+   the answer to "which one am I in": you pick blue, violet or orange here, and
+   the screen you land on is still blue, violet or orange. */
 .app-card { --hue: var(--app-metronome); }
 .app-card.card-trainer { --hue: var(--app-trainer); }
+.app-card.card-circles { --hue: var(--app-circles); }
 
 /* A pool of that hue bleeding up from behind the card on hover, so the hover
    reads as "this is the thing that lights up". */
@@ -144,6 +145,20 @@
    exactly that and looping is seamless. */
 .pt-flow { animation: ptFlow 2.4s linear infinite; }
 @keyframes ptFlow { from { transform: translateX(0) } to { transform: translateX(-96px) } }
+
+/* --- circles: two outlined rings, 3 against 5, and a playhead that
+       sweeps from 12 o'clock — the same model the app itself draws --- */
+.cc-ring { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.cc-dots circle { fill: var(--app-circles); }
+.cc-dots.r3 circle { fill: var(--app-circles); }
+.cc-dots.r5 circle { fill: var(--app-trainer); }
+.cc-dots .cc-head { filter: brightness(1.2); }
+.cc-play line { stroke: var(--text); stroke-width: 1.6; opacity: .8; stroke-linecap: round; }
+.cc-tip { fill: var(--text); }
+/* the hand sits still between taps; a slow, honest sweep of the two
+   head dots' pulse position keeps the card alive without spinning */
+.cc-play { transform-origin: 55px 45px; animation: ccSweep 2.4s linear infinite; }
+@keyframes ccSweep { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
 
 /* ---------- Foot ---------- */
 .hub-foot { color: var(--muted-2); font-size: 11.5px; letter-spacing: .2px; }

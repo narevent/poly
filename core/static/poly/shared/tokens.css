@@ -36,7 +36,7 @@
   --ghost-lit: #cdd0ff;
 
   /* --- per-app signature hue ---
-     The two apps share every layout decision on purpose, which is what makes
+     The apps share every layout decision on purpose, which is what makes
      them feel like one product — but it also made them easy to confuse once
      you were inside one. So each gets a hue of its own, and the hue is the
      only thing that differs: the brand dot, the focus ring, the slider thumb,
@@ -45,6 +45,7 @@
      control in components.css follows without knowing which app it is in. */
   --app-metronome: #6ea8ff;
   --app-trainer: #9b8cff;
+  --app-circles: #ffab6b;
   --app: var(--app-metronome);
 
   /* --- status --- */

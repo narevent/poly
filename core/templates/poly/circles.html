@@ -1,0 +1,97 @@
+{% extends 'poly/base.html' %}
+{% load static %}
+
+{% block title %}Poly — Circles{% endblock %}
+
+{% block styles %}
+  <link rel="stylesheet" href="{% static 'poly/shared/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'poly/circles/circles.css' %}" />
+{% endblock %}
+
+{% block body %}
+  <div id="app" class="app-shell">
+
+    <!-- top bar: brand back to hub, transport on the right -->
+    <header class="topbar">
+      <a class="brand" href="{% url 'hub' %}" title="Back to Poly">
+        <span class="logo">●</span>
+        <span class="brand-name">Poly</span>
+        <span class="brand-sub">circles</span>
+      </a>
+      <div class="transport">
+        <button id="playBtn" class="play-btn" title="Play / Stop (Space)"
+                aria-pressed="false" aria-label="Play or stop">
+          <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- body: stage first (mobile), controls below; side by side on wide screens -->
+    <main class="circles-main" id="main">
+
+      <section class="stage-wrap" id="stageFrame">
+        <canvas id="stage"></canvas>
+
+        <div class="stage-legend" id="voicesLegend"></div>
+
+        <div class="stage-centre">
+          <span id="ratioBadge" class="ratio-badge"></span>
+        </div>
+
+        <span id="cycleInfo" class="cycle-info"></span>
+      </section>
+
+      <aside class="side">
+
+        <div class="panel tempo-panel">
+          <div class="rows-head">
+            <h2>Tempo</h2>
+            <div class="tempo-readout">
+              <span id="bpmReadout" contenteditable="true" spellcheck="false"
+                    inputmode="numeric" title="Type a tempo, or use the slider">45</span>
+              <span class="unit">bpm</span>
+            </div>
+          </div>
+          <input id="bpmSlider" class="slider bpm-slider" type="range"
+                 aria-label="tempo in beats per minute" />
+          <div class="bpm-scale">
+            <span>slow</span><span>fast</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="rows-head">
+            <h2>Voices</h2>
+            <button id="addVoice" class="btn btn-sm">+ Add</button>
+          </div>
+          <div id="voiceRows" class="voice-rows"></div>
+        </div>
+
+        <div class="panel">
+          <div class="rows-head">
+            <h2>Presets</h2>
+          </div>
+          <div id="presetChips" class="chips"></div>
+        </div>
+
+      </aside>
+
+    </main>
+
+    <!-- status bar -->
+    <footer class="statusbar">
+      <span id="statusPos" class="status-pos">stopped</span>
+      <span class="status-right">
+        <span id="statusRatio"></span>
+        <span class="status-sep">·</span>
+        <span id="statusBpm"></span>
+      </span>
+    </footer>
+
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="module" src="{% static 'poly/circles/js/circles.js' %}"></script>
+{% endblock %}

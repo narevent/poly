@@ -13,3 +13,7 @@ class MetronomeView(TemplateView):
 
 class TrainerView(TemplateView):
     template_name = 'poly/trainer.html'
+
+
+class CirclesView(TemplateView):
+    template_name = 'poly/circles.html'

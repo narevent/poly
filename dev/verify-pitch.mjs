@@ -1,0 +1,10 @@
+import './circles-stub.cjs';
+await import('../core/static/poly/circles/js/circles.js');
+const slider = document.getElementById('bpmSlider');
+const editable = document.getElementById('bpmReadout');
+editable.textContent = '200';
+editable.fire('blur');
+console.log('after typing 200 + blur: readout =', editable.textContent, '| slider =', slider.value);
+slider.value = '30'; slider.fire('input');
+console.log('after slider 30: readout =', editable.textContent, '| slider =', slider.value);
+process.exit(0);

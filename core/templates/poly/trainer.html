@@ -145,12 +145,18 @@
     <h2 class="sheet-h">Voices</h2>
     <div class="field-row">
       <div class="field grow">
-        <label class="field-label" for="voiceA">Voice A</label>
+        <label class="field-label" for="voiceA">Voice A <b id="pitchAV">own pitch</b></label>
         <select class="field-input" id="voiceA"></select>
+        <label class="field-sub" for="pitchA">pitch</label>
+        <input type="range" class="slider pitch-slider" id="pitchA" min="-12" max="12" step="1" value="0"
+               aria-label="Voice A pitch in semitones" />
       </div>
       <div class="field grow">
-        <label class="field-label" for="voiceB">Voice B</label>
+        <label class="field-label" for="voiceB">Voice B <b id="pitchBV">own pitch</b></label>
         <select class="field-input" id="voiceB"></select>
+        <label class="field-sub" for="pitchB">pitch</label>
+        <input type="range" class="slider pitch-slider" id="pitchB" min="-12" max="12" step="1" value="0"
+               aria-label="Voice B pitch in semitones" />
       </div>
     </div>
 

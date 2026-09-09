@@ -36,6 +36,15 @@ const MONO = "'JetBrains Mono', ui-monospace, monospace";
 /* ---------------- state ---------------- */
 let A = 3, B = 4, bpm = 90, tolMs = 50, latMs = 0;
 let voice = { A: 'click', B: 'beep' };
+/* per-voice pitch, in semitones −12…+12; 0 = the sample's own pitch.
+   With overlapping pulses the two pads can otherwise be near-impossible
+   to tell apart by ear when they share a sound. */
+let pitch = { A: 0, B: 0 };
+const clampPitch = n => {
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return 0;
+  return Math.min(12, Math.max(-12, v));
+};
 /* `hap` is gone: vibration is not a thing most of these devices can
    actually do — iOS has no navigator.vibrate at all — so the setting was
    promising something that would not happen. A stored `hap` from before is
@@ -150,11 +159,11 @@ function audioLost(reason) {
 function voiceClick(t, v, coin) {
   if (!actx) return;
   if (coin) {
-    if (sound.A || sound.B) playVoice(actx, bus.unison, t, voice.A, 'accent');
+    if (sound.A || sound.B) playVoice(actx, bus.unison, t, voice.A, 'accent', 1, pitch.A);
     return;
   }
-  if (v === 'A' && sound.A) playVoice(actx, bus.A, t, voice.A, 'normal');
-  else if (v === 'B' && sound.B) playVoice(actx, bus.B, t, voice.B, 'normal');
+  if (v === 'A' && sound.A) playVoice(actx, bus.A, t, voice.A, 'normal', 1, pitch.A);
+  else if (v === 'B' && sound.B) playVoice(actx, bus.B, t, voice.B, 'normal', 1, pitch.B);
 }
 /* The player's own tap: pitchless, so it never sounds like a third voice. */
 function tapClick(v) {
@@ -166,7 +175,7 @@ function tapClick(v) {
 const LS = 'poly-trainer-v1';
 function save() {
   try {
-    localStorage.setItem(LS, JSON.stringify({ best, settings: { A, B, bpm, tolMs, latMs, sound, voice } }));
+    localStorage.setItem(LS, JSON.stringify({ best, settings: { A, B, bpm, tolMs, latMs, sound, voice, pitch } }));
   } catch (e) { /* private mode — settings just do not persist */ }
 }
 function load() {
@@ -185,6 +194,10 @@ function load() {
     if (s.voice) {
       if (isVoice(s.voice.A)) voice.A = resolveVoice(s.voice.A);
       if (isVoice(s.voice.B)) voice.B = resolveVoice(s.voice.B);
+    }
+    if (s.pitch) {
+      if (Number.isFinite(s.pitch.A)) pitch.A = clampPitch(s.pitch.A);
+      if (Number.isFinite(s.pitch.B)) pitch.B = clampPitch(s.pitch.B);
     }
   } catch (e) { console.warn('load failed', e); }
 }
@@ -790,12 +803,29 @@ function buildVoicePickers() {
       sel.appendChild(opt);
     });
     sel.value = voice[v];
+    const slider = $('pitch' + v);
+    const readout = $('pitch' + v + 'V');
+    const label = n => {
+      const vinfo = VOICES.find(x => x.id === voice[v]);
+      const name = vinfo ? vinfo.name : 'sound';
+      return n === 0 ? 'own pitch' : (n > 0 ? '+' : '') + n + ' st above';
+    };
+    slider.value = String(pitch[v]);
+    readout.textContent = label(pitch[v]);
+    slider.addEventListener('input', () => {
+      pitch[v] = clampPitch(Number(slider.value));
+      readout.textContent = label(pitch[v]);
+      save();
+      // audition at the new pitch, so the change is heard not guessed
+      ensureAudio();
+      playVoice(actx, bus['tap' + v], actx.currentTime + 0.02, voice[v], 'normal', 1, pitch[v]);
+    });
     sel.addEventListener('change', () => {
       voice[v] = sel.value;
       save();
       // audition it, so the choice is heard rather than guessed
       ensureAudio();
-      playVoice(actx, bus['tap' + v], actx.currentTime + 0.02, voice[v], 'normal');
+      playVoice(actx, bus['tap' + v], actx.currentTime + 0.02, voice[v], 'normal', 1, pitch[v]);
     });
   });
 }
