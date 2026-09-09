@@ -135,7 +135,10 @@ globalThis.AudioContext = function () {
     createOscillator: () => makeNode(),
     createBuffer: (ch, len, rate) => ({ getChannelData: () => new Float32Array(len), length: len, sampleRate: rate, duration: len / rate }),
     createBufferSource: () => makeNode(),
-    createDynamicsCompressor: () => makeNode(),
+    createDynamicsCompressor: () => makeNode({
+      threshold: makeParam(-24), knee: makeParam(30), ratio: makeParam(12),
+      attack: makeParam(0.003), release: makeParam(0.25), reduction: 0,
+    }),
     createWaveShaper: () => makeNode(),
     createDelay: () => makeNode({ delayTime: makeParam(0) }),
     createAnalyser: () => makeNode({ getFloatTimeDomainData() {}, fftSize: 2048 }),
